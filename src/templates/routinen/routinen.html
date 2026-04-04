@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon"><use href="#icon-clipboard"/></svg> Routinen</h1>
+    <button class="btn" onclick="openModal('modal-routine')"><svg class="icon"><use href="#icon-plus"/></svg> Routine</button>
+</div>
+
+<div id="routinen-list"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-routine">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2 id="routine-modal-title">Routine erstellen</h2><button class="modal-close" onclick="closeModal('modal-routine')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="r-id">
+            <div class="form-group"><label>Name</label><input type="text" class="form-control" id="r-name" placeholder="z.B. Morgenroutine"></div>
+            <div class="form-group"><label>Beschreibung</label><textarea class="form-control" id="r-beschr" rows="2"></textarea></div>
+            <div class="form-group"><label>Uhrzeit</label><input type="time" class="form-control" id="r-uhrzeit"></div>
+            <div class="form-group"><label>Wochentage (leer = täglich)</label><input type="text" class="form-control" id="r-tage" placeholder="1,2,3,4,5 (Mo-Fr)"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-routine')">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveRoutine()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+
+async function loadData() {
+    if (!KIND_ID) return;
+    const data = await api(`/routinen/api/list/${KIND_ID}`);
+    const c = document.getElementById('routinen-list');
+    if (!data.length) {
+        c.innerHTML = '<p class="empty-text">Keine Routinen angelegt. Erstelle deine erste Routine!</p>';
+        return;
+    }
+    window._routinenDaten = data;
+    c.innerHTML = data.map(e => {
+        const checkStyle = e.heute_erledigt
+            ? 'background:var(--success);border-color:var(--success);'
+            : 'background:white;border-color:#ccc;';
+
+        return `<div class="timeline-item" style="${e.heute_erledigt ? 'background:#e8efe5;' : ''}">
+            <div style="min-width:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="toggleRoutine(${e.id})">
+                <div style="width:22px;height:22px;border-radius:5px;border:2px solid;${checkStyle}display:flex;align-items:center;justify-content:center;transition:all 0.2s;">
+                    ${e.heute_erledigt ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                </div>
+            </div>
+            <div class="timeline-content" style="flex:1;">
+                <div class="timeline-type">${esc(e.name)}
+                    ${e.uhrzeit ? `<span class="text-muted text-xs" style="margin-left:0.5rem;">${esc(e.uhrzeit)} Uhr</span>` : ''}
+                </div>
+                ${e.beschreibung ? `<div class="timeline-detail">${esc(e.beschreibung)}</div>` : ''}
+            </div>
+            <div class="timeline-actions">
+                <button class="btn btn-outline btn-sm btn-icon" onclick="event.stopPropagation();editR(${e.id})">
+                    <svg class="icon"><use href="#icon-edit"/></svg>
+                </button>
+                <button class="btn btn-outline btn-sm btn-icon" onclick="event.stopPropagation();delR(${e.id})">
+                    <svg class="icon"><use href="#icon-trash"/></svg>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function toggleRoutine(id) {
+    try {
+        const r = await api(`/routinen/api/check/${id}`, {method: 'POST'});
+        showToast(r.erledigt ? 'Erledigt!' : 'Zurückgesetzt', 'success');
+        loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+function editR(id) {
+    const e = window._routinenDaten.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('r-id').value = e.id;
+    document.getElementById('routine-modal-title').textContent = 'Routine bearbeiten';
+    document.getElementById('r-name').value = e.name || '';
+    document.getElementById('r-beschr').value = e.beschreibung || '';
+    document.getElementById('r-uhrzeit').value = e.uhrzeit || '';
+    document.getElementById('r-tage').value = e.wochentage || '';
+    openModal('modal-routine');
+}
+
+async function saveRoutine() {
+    const id = document.getElementById('r-id').value;
+    const name = document.getElementById('r-name').value;
+    if (!name) { showToast('Name eingeben', 'error'); return; }
+    const body = {
+        kind_id: KIND_ID, name: name,
+        beschreibung: document.getElementById('r-beschr').value || null,
+        uhrzeit: document.getElementById('r-uhrzeit').value || null,
+        wochentage: document.getElementById('r-tage').value || null,
+    };
+    try {
+        if (id) { await api(`/routinen/api/update/${id}`, {method:'PUT', body}); }
+        else { await api('/routinen/api/create', {method:'POST', body}); }
+        document.getElementById('r-id').value = '';
+        document.getElementById('routine-modal-title').textContent = 'Routine erstellen';
+        closeModal('modal-routine');
+        showToast('Gespeichert', 'success');
+        loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function delR(id) {
+    if (!await confirm('Routine löschen?', {danger: true})) return;
+    await api(`/routinen/api/delete/${id}`, {method: 'DELETE'});
+    showToast('Gelöscht', 'success');
+    loadData();
+}
+
+loadData();
+</script>
+{% endblock %}

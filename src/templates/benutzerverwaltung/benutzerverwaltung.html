@@ -1,0 +1,183 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon" style="color:#607D8B"><use href="#icon-users"/></svg> Benutzerverwaltung</h1>
+    <button class="btn" onclick="openModal('modal-invite')"><svg class="icon"><use href="#icon-plus"/></svg> Einladen</button>
+</div>
+
+<div id="users-list"></div>
+
+<!-- Modal: Einladen -->
+<div class="modal-overlay" id="modal-invite">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2>Benutzer einladen</h2><button class="modal-close" onclick="closeModal('modal-invite')">&times;</button></div>
+        <div class="modal-body">
+            <div class="form-group"><label>Benutzername</label><input type="text" class="form-control" id="inv-user"></div>
+            <div class="form-group"><label>E-Mail</label><input type="email" class="form-control" id="inv-email"></div>
+            <div class="form-group"><label>Rolle</label>
+                <select class="form-control" id="inv-role">
+                    <option value="mutter">Mutter (Vollzugriff, kann Kinder anlegen)</option>
+                    <option value="vater">Vater (Vollzugriff, kann Kinder anlegen)</option>
+                    <option value="betreuer">Betreuer (lesen + schreiben)</option>
+                    <option value="leser">Leser (nur lesen)</option>
+                    <option value="admin">Admin (Vollzugriff + Benutzerverwaltung)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-invite')">Abbrechen</button><button class="btn btn-primary" onclick="inviteUser()">Einladen</button></div>
+    </div>
+</div>
+
+<!-- Modal: Benutzer bearbeiten -->
+<div class="modal-overlay" id="modal-edit-user">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2>Benutzer bearbeiten</h2><button class="modal-close" onclick="closeModal('modal-edit-user')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="eu-id">
+            <div class="form-group"><label>Benutzername</label><input type="text" class="form-control" id="eu-username"></div>
+            <div class="form-group"><label>E-Mail</label><input type="email" class="form-control" id="eu-email"></div>
+            <div class="form-group"><label>Rolle</label>
+                <select class="form-control" id="eu-role">
+                    <option value="admin">Admin</option>
+                    <option value="mutter">Mutter</option>
+                    <option value="vater">Vater</option>
+                    <option value="betreuer">Betreuer</option>
+                    <option value="leser">Leser</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-edit-user')">Abbrechen</button><button class="btn btn-primary" onclick="saveUser()">Speichern</button></div>
+    </div>
+</div>
+
+<!-- Modal: Berechtigungen -->
+<div class="modal-overlay" id="modal-perms">
+    <div class="modal-content">
+        <div class="modal-header"><h2 id="perm-title">Berechtigungen</h2><button class="modal-close" onclick="closeModal('modal-perms')">&times;</button></div>
+        <div class="modal-body" id="perm-body"></div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-perms')">Abbrechen</button><button class="btn btn-primary" onclick="savePerms()">Speichern</button></div>
+    </div>
+</div>
+
+<script>
+let allModules = [];
+let editUserId = null;
+const ROLLE_LABELS = {admin:'Admin', mutter:'Mutter', vater:'Vater', betreuer:'Betreuer', leser:'Leser'};
+function rolleLabel(r) { return ROLLE_LABELS[r] || r; }
+
+async function loadUsers() {
+    const r = await api('/benutzerverwaltung/api/users');
+    allModules = r.modules;
+    window._userDaten = r.users;
+    const c = document.getElementById('users-list');
+    c.innerHTML = r.users.map(u => `<div class="card mb-2" style="border-left:3px solid ${u.role==='admin'?'var(--primary)':'var(--success)'};">
+        <div class="d-flex justify-between items-center flex-wrap gap-1">
+            <div>
+                <strong>${esc(u.username)}</strong>
+                <span class="badge ${u.role==='admin'?'badge-primary':u.role==='mutter'||u.role==='vater'?'badge-success':u.role==='betreuer'?'badge-warning':'badge-info'}">${rolleLabel(u.role)}</span>
+                <div class="text-xs text-muted">${esc(u.email)} ${u.last_login?'| Letzter Login: '+formatDateTime(u.last_login):''}</div>
+            </div>
+            <div class="d-flex gap-1">
+                <button class="btn btn-outline btn-sm" onclick="editUser(${u.id})" title="Bearbeiten"><svg class="icon"><use href="#icon-edit"/></svg></button>
+                <button class="btn btn-outline btn-sm" onclick="openPerms(${u.id})" title="Berechtigungen"><svg class="icon"><use href="#icon-settings"/></svg></button>
+                <button class="btn btn-outline btn-sm" onclick="resendInvite(${u.id})" title="Einladung erneut senden"><svg class="icon"><use href="#icon-mail"/></svg></button>
+                <button class="btn btn-outline btn-sm btn-icon" onclick="deleteUser(${u.id})" title="Löschen"><svg class="icon"><use href="#icon-trash"/></svg></button>
+            </div>
+        </div>
+    </div>`).join('');
+}
+
+function editUser(id) {
+    const u = window._userDaten.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('eu-id').value = u.id;
+    document.getElementById('eu-username').value = u.username || '';
+    document.getElementById('eu-email').value = u.email || '';
+    document.getElementById('eu-role').value = u.role || '';
+    openModal('modal-edit-user');
+}
+
+async function saveUser() {
+    const id = document.getElementById('eu-id').value;
+    try {
+        await api(`/benutzerverwaltung/api/users/${id}`, {method: 'PUT', body: {
+            username: document.getElementById('eu-username').value,
+            email: document.getElementById('eu-email').value,
+            role: document.getElementById('eu-role').value,
+        }});
+        closeModal('modal-edit-user');
+        showToast('Gespeichert', 'success');
+        loadUsers();
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+function openPerms(userId) {
+    const u = window._userDaten.find(x => x.id === userId);
+    if (!u) return;
+    const perms = u.permissions || {};
+    editUserId = userId;
+    document.getElementById('perm-title').textContent = `Berechtigungen: ${u.username}`;
+    document.getElementById('perm-body').innerHTML = `<table style="width:100%;">
+        <thead><tr><th>Modul</th><th>Lesen</th><th>Schreiben</th></tr></thead>
+        <tbody>${allModules.map(m => {
+            const p = perms[m.id] || {read:false,write:false};
+            return `<tr><td>${m.name}</td>
+                <td><input type="checkbox" data-module="${m.id}" data-perm="read" ${p.read?'checked':''}></td>
+                <td><input type="checkbox" data-module="${m.id}" data-perm="write" ${p.write?'checked':''}></td>
+            </tr>`;
+        }).join('')}</tbody>
+    </table>`;
+    openModal('modal-perms');
+}
+
+async function savePerms() {
+    const perms = {};
+    document.querySelectorAll('#perm-body input[type="checkbox"]').forEach(cb => {
+        const mod = cb.dataset.module;
+        const perm = cb.dataset.perm;
+        if (!perms[mod]) perms[mod] = {};
+        perms[mod][perm] = cb.checked;
+    });
+    await api(`/benutzerverwaltung/api/users/${editUserId}/permissions`,{method:'PUT',body:perms});
+    closeModal('modal-perms'); showToast('Gespeichert','success');
+}
+
+async function inviteUser() {
+    try {
+        const r = await api('/benutzerverwaltung/api/invite',{method:'POST',body:{
+            username:document.getElementById('inv-user').value, email:document.getElementById('inv-email').value,
+            role:document.getElementById('inv-role').value,
+        }});
+        closeModal('modal-invite');
+        if (r.mail_sent) { showToast('Einladung gesendet','success'); }
+        else { showToast('Erstellt (Mail konnte nicht gesendet werden). Link: ' + (r.invite_url||''), 'warning'); }
+        loadUsers();
+    } catch(e){showToast(e.message,'error');}
+}
+
+async function resendInvite(id) {
+    const u = window._userDaten.find(x => x.id === id);
+    const name = u ? u.username : '';
+    if (!await confirm(`Einladung an "${name}" erneut senden?`)) return;
+    try {
+        const r = await api(`/benutzerverwaltung/api/users/${id}/resend-invite`, {method:'POST'});
+        if (r.mail_sent) {
+            showToast('Einladung gesendet', 'success');
+        } else {
+            const url = r.invite_url || '';
+            showToast('Mail konnte nicht gesendet werden. Link: ' + url, 'warning');
+            if (url) navigator.clipboard.writeText(url);
+        }
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function deleteUser(id) {
+    const u = window._userDaten.find(x => x.id === id);
+    const name = u ? u.username : '';
+    if (!await confirm(`Benutzer "${name}" wirklich löschen?`,{danger:true})) return;
+    await api(`/benutzerverwaltung/api/users/${id}`,{method:'DELETE'}); showToast('Gelöscht'); loadUsers();
+}
+
+loadUsers();
+</script>
+{% endblock %}

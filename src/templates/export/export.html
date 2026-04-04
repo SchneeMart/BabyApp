@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon"><use href="#icon-download"/></svg> Berichte & Export</h1>
+</div>
+
+<!-- Arztbericht -->
+<div class="card mb-2">
+    <h2>Arztbericht erstellen</h2>
+    <p class="text-sm text-muted">Erstellt einen druckbaren Bericht mit allen Daten für den Kinderarzt.</p>
+    <div class="form-row mt-1">
+        <div class="form-group"><label>Von</label><input type="date" class="form-control" id="bericht-von"></div>
+        <div class="form-group"><label>Bis</label><input type="date" class="form-control" id="bericht-bis"></div>
+    </div>
+    <button class="btn btn-primary mt-1" onclick="openBericht()"><svg class="icon"><use href="#icon-download"/></svg> Bericht öffnen (drucken/PDF)</button>
+</div>
+
+<!-- CSV-Export -->
+<div class="card">
+    <h2>CSV-Export</h2>
+    <p class="text-sm text-muted">Daten als CSV herunterladen (kompatibel mit Excel, Google Sheets).</p>
+    <div class="stat-grid mt-1" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+        <a href="#" onclick="downloadCSV('fuetterung')" class="quick-action"><div class="qa-icon" style="background:var(--primary-5);color:var(--primary);"><svg class="icon"><use href="#icon-bottle"/></svg></div>Fütterung</a>
+        <a href="#" onclick="downloadCSV('schlaf')" class="quick-action"><div class="qa-icon" style="background:#e5ebe3;color:var(--primary);"><svg class="icon"><use href="#icon-moon"/></svg></div>Schlaf</a>
+        <a href="#" onclick="downloadCSV('windeln')" class="quick-action"><div class="qa-icon" style="background:#dde8ec;color:var(--info);"><svg class="icon"><use href="#icon-droplet"/></svg></div>Windeln</a>
+        <a href="#" onclick="downloadCSV('wachstum')" class="quick-action"><div class="qa-icon" style="background:#e8efe5;color:var(--success);"><svg class="icon"><use href="#icon-trending-up"/></svg></div>Wachstum</a>
+        <a href="#" onclick="downloadCSV('gesundheit')" class="quick-action"><div class="qa-icon" style="background:#f5e0dc;color:var(--danger);"><svg class="icon"><use href="#icon-thermometer"/></svg></div>Gesundheit</a>
+        <a href="#" onclick="downloadCSV('impfungen')" class="quick-action"><div class="qa-icon" style="background:#ebe5e0;color:var(--accent);"><svg class="icon"><use href="#icon-shield"/></svg></div>Impfungen</a>
+        <a href="#" onclick="downloadCSV('meilensteine')" class="quick-action"><div class="qa-icon" style="background:#e5ebe3;color:var(--primary);"><svg class="icon"><use href="#icon-flag"/></svg></div>Meilensteine</a>
+    </div>
+</div>
+
+<script>
+function openBericht() {
+    const von = document.getElementById('bericht-von').value;
+    const bis = document.getElementById('bericht-bis').value;
+    window.open(`/export/bericht/${KIND_ID}?von=${von}&bis=${bis}`, '_blank');
+}
+
+function downloadCSV(modul) {
+    window.location.href = `/export/csv/${KIND_ID}/${modul}`;
+}
+
+// Defaults
+const heute = new Date().toISOString().split('T')[0];
+const vor30 = new Date(Date.now() - 30*86400000).toISOString().split('T')[0];
+document.getElementById('bericht-von').value = vor30;
+document.getElementById('bericht-bis').value = heute;
+</script>
+{% endblock %}

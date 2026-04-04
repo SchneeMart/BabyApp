@@ -1,0 +1,19 @@
+services:
+  web:
+    build: .
+    container_name: babyapp-web
+    ports:
+      - "5020:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_APP=src.app
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_MODE=dev
+      - MAIL_SERVER=${MAIL_SERVER}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USE_SSL=${MAIL_USE_SSL}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_SENDER=${MAIL_SENDER}
+    restart: unless-stopped

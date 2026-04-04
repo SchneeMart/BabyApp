@@ -1,0 +1,181 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon" style="color:var(--primary)"><use href="#icon-moon"/></svg> Schlaf</h1>
+    <div class="d-flex gap-1">
+        <button class="btn btn-outline" onclick="openModal('modal-schlaf')"><svg class="icon"><use href="#icon-plus"/></svg> Manuell</button>
+        <button class="btn" id="btn-start-schlaf" onclick="startSchlaf()"><svg class="icon"><use href="#icon-play"/></svg> Schlaf starten</button>
+    </div>
+</div>
+
+<!-- Aktiver Timer -->
+<div id="active-timer" class="d-none">
+    <div class="timer-card" style="background:linear-gradient(135deg, #5d7a54 0%, #3b5232 100%);">
+        <div class="timer-label" id="timer-label">Schlaf läuft</div>
+        <div class="timer-display" id="sleep-timer">00:00</div>
+        <div class="timer-actions">
+            <button class="timer-btn timer-btn-stop" onclick="stopSchlaf()">Aufgewacht</button>
+        </div>
+    </div>
+</div>
+
+<!-- Datum-Navigation -->
+<div class="d-flex items-center justify-between mb-2 mt-2">
+    <button class="btn btn-outline btn-sm" onclick="changeDate(-1)">&larr;</button>
+    <strong id="datum-display"></strong>
+    <button class="btn btn-outline btn-sm" onclick="changeDate(1)">&rarr;</button>
+</div>
+
+<div id="timeline" class="timeline"></div>
+
+<!-- Vorhersage -->
+<div class="card mt-2" id="vorhersage-card" style="display:none;">
+    <h2><svg class="icon" style="color:var(--warning)"><use href="#icon-sun"/></svg> Schlafvorhersage</h2>
+    <div id="vorhersage-content"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-schlaf">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2 id="schlaf-modal-title">Schlaf manuell</h2><button class="modal-close" onclick="closeModal('modal-schlaf')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="s-id">
+            <div class="form-row">
+                <div class="form-group"><label>Beginn</label><input type="datetime-local" class="form-control" id="s-beginn"></div>
+                <div class="form-group"><label>Ende</label><input type="datetime-local" class="form-control" id="s-ende"></div>
+            </div>
+            <div class="form-group">
+                <label>Typ</label>
+                <select class="form-control" id="s-typ"><option value="nickerchen">Nickerchen</option><option value="nachtschlaf">Nachtschlaf</option></select>
+            </div>
+            <div class="form-group">
+                <label>Ort</label>
+                <select class="form-control" id="s-ort"><option value="">--</option><option value="bett">Bett</option><option value="kinderwagen">Kinderwagen</option><option value="auto">Auto</option><option value="arm">Arm</option></select>
+            </div>
+            <div class="form-group"><label>Notiz</label><textarea class="form-control" id="s-notiz" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-schlaf')">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveSchlaf()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+let currentDate = new Date().toISOString().split('T')[0];
+let activeSchlafId = null;
+
+function changeDate(d) {
+    const dt = new Date(currentDate); dt.setDate(dt.getDate() + d);
+    currentDate = dt.toISOString().split('T')[0]; loadData();
+}
+
+async function loadData() {
+    if (!KIND_ID) return;
+    document.getElementById('datum-display').textContent = new Date(currentDate+'T00:00').toLocaleDateString('de-AT',{weekday:'short',day:'numeric',month:'short'});
+    const data = await api(`/schlaf/api/list/${KIND_ID}?datum=${currentDate}`);
+
+    // Aktiver Timer prüfen
+    const aktiv = data.find(e => !e.ende);
+    if (aktiv) {
+        activeSchlafId = aktiv.id;
+        document.getElementById('active-timer').classList.remove('d-none');
+        document.getElementById('btn-start-schlaf').classList.add('d-none');
+        BabyTimer.start('sleep', aktiv.beginn, document.getElementById('sleep-timer'));
+    } else {
+        document.getElementById('active-timer').classList.add('d-none');
+        document.getElementById('btn-start-schlaf').classList.remove('d-none');
+    }
+
+    window._schlafDaten = data;
+    const abgeschlossen = data.filter(e => e.ende);
+    const container = document.getElementById('timeline');
+    if (!abgeschlossen.length) { container.innerHTML = '<p class="empty-text">Keine Einträge</p>'; return; }
+
+    container.innerHTML = abgeschlossen.map(e => `<div class="timeline-item">
+        <div class="timeline-time">${formatTime(e.beginn)}</div>
+        <div class="timeline-content">
+            <div class="timeline-type">${e.typ === 'nachtschlaf' ? 'Nachtschlaf' : 'Nickerchen'}</div>
+            <div class="timeline-detail">${formatDauer(e.dauer_minuten)}${e.ort ? ' - '+esc(e.ort) : ''}</div>
+        </div>
+        <div class="timeline-actions">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="editSchlaf(${e.id})"><svg class="icon"><use href="#icon-edit"/></svg></button>
+            <button class="btn btn-outline btn-sm btn-icon" onclick="deleteSchlaf(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button>
+        </div>
+    </div>`).join('');
+
+    loadVorhersage();
+}
+
+async function startSchlaf() {
+    try {
+        const r = await api('/schlaf/api/start', { method:'POST', body:{ kind_id:KIND_ID, typ:'nickerchen' }});
+        activeSchlafId = r.id;
+        showToast('Schlaf gestartet','success');
+        loadData();
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+async function stopSchlaf() {
+    if (!activeSchlafId) return;
+    try {
+        const r = await api(`/schlaf/api/stop/${activeSchlafId}`, { method:'POST' });
+        showToast(`Schlaf beendet (${formatDauer(r.dauer_minuten)})`,'success');
+        BabyTimer.stop('sleep'); activeSchlafId = null;
+        loadData();
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+function editSchlaf(id) {
+    const e = window._schlafDaten.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('s-id').value = e.id;
+    document.getElementById('schlaf-modal-title').textContent = 'Schlaf bearbeiten';
+    document.getElementById('s-beginn').value = e.beginn ? new Date(e.beginn).toISOString().slice(0,16) : '';
+    document.getElementById('s-ende').value = e.ende ? new Date(e.ende).toISOString().slice(0,16) : '';
+    document.getElementById('s-typ').value = e.typ || 'nickerchen';
+    document.getElementById('s-ort').value = e.ort || '';
+    document.getElementById('s-notiz').value = e.notiz || '';
+    openModal('modal-schlaf');
+}
+
+async function saveSchlaf() {
+    const id = document.getElementById('s-id').value;
+    const beginn = document.getElementById('s-beginn').value;
+    const ende = document.getElementById('s-ende').value;
+    if (!beginn || !ende) { showToast('Beginn und Ende angeben','error'); return; }
+    const body = {
+        kind_id: KIND_ID, beginn: new Date(beginn).toISOString(), ende: new Date(ende).toISOString(),
+        typ: document.getElementById('s-typ').value, ort: document.getElementById('s-ort').value,
+        notiz: document.getElementById('s-notiz').value, dauer_minuten: Math.round((new Date(ende)-new Date(beginn))/60000),
+    };
+    try {
+        if (id) { await api(`/schlaf/api/update/${id}`, {method:'PUT', body}); }
+        else { await api('/schlaf/api/create', {method:'POST', body}); }
+        closeModal('modal-schlaf'); showToast('Gespeichert','success');
+        document.getElementById('s-id').value = '';
+        document.getElementById('schlaf-modal-title').textContent = 'Schlaf manuell';
+        loadData();
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+async function deleteSchlaf(id) {
+    if (!await confirm('Löschen?',{danger:true})) return;
+    await api(`/schlaf/api/delete/${id}`,{method:'DELETE'}); showToast('Gelöscht','success'); loadData();
+}
+
+async function loadVorhersage() {
+    try {
+        const r = await api(`/schlaf/api/vorhersage/${KIND_ID}`);
+        if (!r.vorhersage || !r.vorhersage.length) { document.getElementById('vorhersage-card').style.display='none'; return; }
+        document.getElementById('vorhersage-card').style.display='block';
+        document.getElementById('vorhersage-content').innerHTML = '<div class="stat-grid">' +
+            r.vorhersage.map(v => `<div class="stat-card"><div class="stat-card-value">${v.stunde}:00</div><div class="stat-card-label">~${v.durchschnitt_minuten} Min.</div><div class="stat-card-sub">${v.haeufigkeit}x in 7 Tagen</div></div>`).join('') +
+        '</div>';
+    } catch(e) {}
+}
+
+loadData();
+</script>
+{% endblock %}

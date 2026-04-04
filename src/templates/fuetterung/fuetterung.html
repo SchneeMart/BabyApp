@@ -1,0 +1,234 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon" style="color:var(--primary)"><use href="#icon-bottle"/></svg> Fütterung</h1>
+    <button class="btn" onclick="openModal('modal-fuetterung')"><svg class="icon"><use href="#icon-plus"/></svg> Eintrag</button>
+</div>
+
+<!-- Typ-Tabs -->
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="setTyp('alle', this)">Alle</button>
+    <button class="tab-btn" onclick="setTyp('stillen', this)">Stillen</button>
+    <button class="tab-btn" onclick="setTyp('flasche', this)">Flasche</button>
+    <button class="tab-btn" onclick="setTyp('abpumpen', this)">Abpumpen</button>
+    <button class="tab-btn" onclick="setTyp('beikost', this)">Beikost</button>
+</div>
+
+<!-- Datum-Navigation -->
+<div class="d-flex items-center justify-between mb-2">
+    <button class="btn btn-outline btn-sm" onclick="changeDate(-1)">&larr;</button>
+    <strong id="datum-display"></strong>
+    <button class="btn btn-outline btn-sm" onclick="changeDate(1)">&rarr;</button>
+</div>
+
+<!-- Timeline -->
+<div id="timeline" class="timeline"></div>
+
+<!-- Modal: Fütterung erstellen -->
+<div class="modal-overlay" id="modal-fuetterung">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="fuett-modal-title">Fütterung erfassen</h2>
+            <button class="modal-close" onclick="closeModal('modal-fuetterung')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="f-id">
+            <div class="form-group">
+                <label>Typ</label>
+                <select class="form-control" id="f-typ" onchange="toggleFuetterungFelder()">
+                    <option value="stillen">Stillen</option>
+                    <option value="flasche">Flasche</option>
+                    <option value="abpumpen">Abpumpen</option>
+                    <option value="beikost">Beikost</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Beginn</label>
+                    <input type="datetime-local" class="form-control" id="f-beginn">
+                </div>
+                <div class="form-group">
+                    <label>Ende</label>
+                    <input type="datetime-local" class="form-control" id="f-ende">
+                </div>
+            </div>
+            <div id="stillen-felder">
+                <div class="form-group">
+                    <label>Seite</label>
+                    <select class="form-control" id="f-seite">
+                        <option value="">--</option>
+                        <option value="links">Links</option>
+                        <option value="rechts">Rechts</option>
+                        <option value="beide">Beide</option>
+                    </select>
+                </div>
+            </div>
+            <div id="flasche-felder" class="d-none">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Menge (ml)</label>
+                        <input type="number" class="form-control" id="f-menge" step="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Inhalt</label>
+                        <select class="form-control" id="f-inhalt">
+                            <option value="muttermilch">Muttermilch</option>
+                            <option value="formula">Formula</option>
+                            <option value="wasser">Wasser</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="beikost-felder" class="d-none">
+                <div class="form-group">
+                    <label>Lebensmittel</label>
+                    <input type="text" class="form-control" id="f-lebensmittel" placeholder="z.B. Karotte, Banane">
+                </div>
+                <div class="form-group">
+                    <label>Reaktion</label>
+                    <input type="text" class="form-control" id="f-reaktion" placeholder="Gut vertragen, Ausschlag etc.">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notiz</label>
+                <textarea class="form-control" id="f-notiz" rows="2"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-fuetterung')">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveFuetterung()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+let currentDate = new Date().toISOString().split('T')[0];
+let filterTyp = 'alle';
+
+function setTyp(typ, btn) {
+    filterTyp = typ;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadData();
+}
+
+function changeDate(delta) {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + delta);
+    currentDate = d.toISOString().split('T')[0];
+    loadData();
+}
+
+function toggleFuetterungFelder() {
+    const typ = document.getElementById('f-typ').value;
+    document.getElementById('stillen-felder').classList.toggle('d-none', typ !== 'stillen');
+    document.getElementById('flasche-felder').classList.toggle('d-none', typ !== 'flasche' && typ !== 'abpumpen');
+    document.getElementById('beikost-felder').classList.toggle('d-none', typ !== 'beikost');
+}
+
+let _fuettDaten = [];
+
+async function loadData() {
+    if (!KIND_ID) return;
+    document.getElementById('datum-display').textContent = new Date(currentDate + 'T00:00').toLocaleDateString('de-AT', {weekday:'short', day:'numeric', month:'short'});
+
+    _fuettDaten = await api(`/fuetterung/api/list/${KIND_ID}?datum=${currentDate}`);
+    const filtered = filterTyp === 'alle' ? _fuettDaten : _fuettDaten.filter(e => e.typ === filterTyp);
+
+    const container = document.getElementById('timeline');
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="empty-text">Keine Einträge für diesen Tag</p>';
+        return;
+    }
+
+    container.innerHTML = filtered.map(e => {
+        const typLabel = {stillen:'Stillen', flasche:'Flasche', abpumpen:'Abpumpen', beikost:'Beikost'}[e.typ] || e.typ;
+        let detail = '';
+        if (e.typ === 'stillen' && e.seite) detail = `Seite: ${esc(e.seite)}`;
+        if ((e.typ === 'flasche' || e.typ === 'abpumpen') && e.menge_ml) detail = `${e.menge_ml} ml`;
+        if (e.typ === 'beikost' && e.lebensmittel) detail = esc(e.lebensmittel);
+        if (e.dauer_minuten) detail += (detail ? ' - ' : '') + formatDauer(e.dauer_minuten);
+
+        return `<div class="timeline-item">
+            <div class="timeline-time">${formatTime(e.beginn)}</div>
+            <div class="timeline-content">
+                <div class="timeline-type">${typLabel}</div>
+                <div class="timeline-detail">${detail}</div>
+                ${e.notiz ? `<div class="timeline-detail">${esc(e.notiz)}</div>` : ''}
+            </div>
+            <div class="timeline-actions">
+                <button class="btn btn-outline btn-sm btn-icon" onclick="editFuetterung(${e.id})">
+                    <svg class="icon"><use href="#icon-edit"/></svg>
+                </button>
+                <button class="btn btn-outline btn-sm btn-icon" onclick="deleteFuetterung(${e.id})">
+                    <svg class="icon"><use href="#icon-trash"/></svg>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function editFuetterung(id) {
+    const e = _fuettDaten.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('f-id').value = e.id;
+    document.getElementById('fuett-modal-title').textContent = 'Fütterung bearbeiten';
+    document.getElementById('f-typ').value = e.typ;
+    document.getElementById('f-beginn').value = e.beginn ? new Date(e.beginn).toISOString().slice(0,16) : '';
+    document.getElementById('f-ende').value = e.ende ? new Date(e.ende).toISOString().slice(0,16) : '';
+    document.getElementById('f-seite').value = e.seite || '';
+    document.getElementById('f-menge').value = e.menge_ml || '';
+    document.getElementById('f-inhalt').value = e.inhalt || '';
+    document.getElementById('f-lebensmittel').value = e.lebensmittel || '';
+    document.getElementById('f-reaktion').value = e.reaktion || '';
+    document.getElementById('f-notiz').value = e.notiz || '';
+    toggleFuetterungFelder();
+    openModal('modal-fuetterung');
+}
+
+async function saveFuetterung() {
+    const id = document.getElementById('f-id').value;
+    const body = {
+        kind_id: KIND_ID,
+        typ: document.getElementById('f-typ').value,
+        beginn: document.getElementById('f-beginn').value ? new Date(document.getElementById('f-beginn').value).toISOString() : new Date().toISOString(),
+        ende: document.getElementById('f-ende').value ? new Date(document.getElementById('f-ende').value).toISOString() : null,
+        seite: document.getElementById('f-seite').value || null,
+        menge_ml: parseFloat(document.getElementById('f-menge').value) || null,
+        inhalt: document.getElementById('f-inhalt').value || null,
+        lebensmittel: document.getElementById('f-lebensmittel').value || null,
+        reaktion: document.getElementById('f-reaktion').value || null,
+        notiz: document.getElementById('f-notiz').value || null,
+    };
+    if (body.beginn && body.ende) {
+        body.dauer_minuten = Math.round((new Date(body.ende) - new Date(body.beginn)) / 60000);
+    }
+    try {
+        if (id) {
+            await api(`/fuetterung/api/update/${id}`, { method: 'PUT', body });
+        } else {
+            await api('/fuetterung/api/create', { method: 'POST', body });
+        }
+        closeModal('modal-fuetterung');
+        showToast('Gespeichert', 'success');
+        document.getElementById('f-id').value = '';
+        document.getElementById('fuett-modal-title').textContent = 'Fütterung erfassen';
+        loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function deleteFuetterung(id) {
+    if (!await confirm('Eintrag wirklich löschen?', {danger: true})) return;
+    try {
+        await api(`/fuetterung/api/delete/${id}`, { method: 'DELETE' });
+        showToast('Eintrag gelöscht', 'success');
+        loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+// Init
+document.getElementById('f-beginn').value = new Date().toISOString().slice(0,16);
+loadData();
+</script>
+{% endblock %}

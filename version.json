@@ -1,0 +1,11 @@
+{
+    "version": "1.0.0",
+    "date": "2026-04-03",
+    "releases": [
+        {
+            "version": "1.0.0",
+            "date": "2026-04-03",
+            "changelog": ["Erste Version der BabyApp"]
+        }
+    ]
+}

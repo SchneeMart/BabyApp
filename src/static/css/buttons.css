@@ -1,0 +1,60 @@
+/* =============================================================
+   BUTTONS -- Alle Button-Varianten (Natur-Thema)
+   ============================================================= */
+
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem;
+    padding: 0.45rem 1.1rem; font-size: 0.875rem; font-weight: 700;
+    min-height: 36px; font-family: inherit;
+    color: white; background: var(--primary);
+    border: none; border-radius: 8px; cursor: pointer;
+    text-decoration: none; transition: all 0.2s ease;
+    box-shadow: 0 1px 4px rgba(59, 48, 40, 0.15);
+}
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-30); }
+.btn:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 3px 12px rgba(59, 48, 40, 0.2); }
+.btn:active { transform: translateY(0) scale(0.97); }
+
+.btn-primary { background: var(--primary); }
+.btn-primary:hover { background: var(--primary-hover); }
+
+.btn-secondary { background: var(--accent); box-shadow: 0 1px 4px rgba(139, 110, 78, 0.2); }
+.btn-secondary:hover { background: var(--accent-light); }
+
+.btn-outline {
+    background: transparent; border: 1.5px solid var(--border-color);
+    color: var(--text-dark); box-shadow: none;
+}
+.btn-outline:hover { background: var(--primary-5); border-color: var(--primary); color: var(--primary); }
+
+.btn-danger { background: var(--danger); box-shadow: 0 1px 4px rgba(181, 91, 74, 0.2); }
+.btn-danger:hover { background: #a04e3e; }
+
+.btn-success { background: var(--success); box-shadow: 0 1px 4px rgba(107, 142, 90, 0.2); }
+.btn-success:hover { background: #5f7e50; }
+
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; min-height: 30px; border-radius: 6px; }
+.btn-lg { padding: 0.6rem 1.5rem; font-size: 1rem; min-height: 42px; }
+.btn-block { width: 100%; }
+.btn-icon { padding: 0.4rem; min-height: 32px; min-width: 32px; }
+
+.btn .icon { width: 1em; height: 1em; }
+
+/* Quick-Action Buttons (Dashboard) */
+.quick-action {
+    display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+    padding: 1rem; border-radius: 12px; border: 1.5px solid var(--border-color);
+    background: var(--card-bg); color: var(--text-dark); text-decoration: none;
+    font-size: 0.8rem; font-weight: 600;
+    transition: all 0.2s ease; cursor: pointer;
+    min-width: 80px;
+}
+.quick-action:hover {
+    border-color: var(--primary); color: var(--primary);
+    transform: translateY(-2px); box-shadow: 0 4px 16px rgba(93, 122, 84, 0.12);
+}
+.quick-action .qa-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+}

@@ -1,0 +1,286 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon" style="color:var(--danger)"><use href="#icon-thermometer"/></svg> Gesundheit</h1>
+    <button class="btn" onclick="openNewGesundheit()"><svg class="icon"><use href="#icon-plus"/></svg> Eintrag</button>
+</div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="showGTab('symptome',this)">Symptome</button>
+    <button class="tab-btn" onclick="showGTab('impfungen',this)">Impfungen</button>
+    <button class="tab-btn" onclick="showGTab('medikamente',this)">Medikamente</button>
+    <button class="tab-btn" onclick="showGTab('arztbesuche',this)">Arztbesuche</button>
+</div>
+
+<div id="gtab-symptome" class="tab-content active"><div id="symptome-list" class="timeline"></div></div>
+<div id="gtab-impfungen" class="tab-content"><div id="impfungen-list" class="timeline"></div><button class="btn btn-outline mt-2" onclick="openModal('modal-impfung')"><svg class="icon"><use href="#icon-plus"/></svg> Impfung</button></div>
+<div id="gtab-medikamente" class="tab-content"><div id="medikamente-list" class="timeline"></div><button class="btn btn-outline mt-2" onclick="openModal('modal-medikament')"><svg class="icon"><use href="#icon-plus"/></svg> Medikament</button></div>
+<div id="gtab-arztbesuche" class="tab-content"><div id="arztbesuche-list" class="timeline"></div><button class="btn btn-outline mt-2" onclick="openModal('modal-arztbesuch')"><svg class="icon"><use href="#icon-plus"/></svg> Arztbesuch</button></div>
+
+<!-- Modal: Symptom/Temperatur -->
+<div class="modal-overlay" id="modal-gesundheit">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2 id="gesund-modal-title">Gesundheitseintrag</h2><button class="modal-close" onclick="closeModal('modal-gesundheit')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="g-id">
+            <div class="form-group"><label>Datum / Uhrzeit</label><input type="datetime-local" class="form-control" id="g-datum"></div>
+            <div class="form-group"><label>Typ</label><select class="form-control" id="g-typ"><option value="symptom">Symptom</option><option value="temperatur">Temperatur</option><option value="sonstiges">Sonstiges</option></select></div>
+            <div class="form-group"><label>Temperatur</label><input type="number" class="form-control" id="g-temp" step="0.1" placeholder="z.B. 37.5"></div>
+            <div class="form-group"><label>Symptome</label><input type="text" class="form-control" id="g-symptome" placeholder="z.B. Husten, Schnupfen"></div>
+            <div class="form-group"><label>Beschreibung</label><textarea class="form-control" id="g-beschr" rows="2"></textarea></div>
+            <div class="form-group">
+                <label>Fotos</label>
+                <div class="d-flex gap-1 flex-wrap" id="g-foto-preview"></div>
+                <button type="button" class="btn btn-outline btn-sm mt-1" onclick="captureGFoto()">
+                    <svg class="icon"><use href="#icon-camera"/></svg> Foto aufnehmen
+                </button>
+            </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-gesundheit')">Abbrechen</button><button class="btn btn-primary" onclick="saveGesundheit()">Speichern</button></div>
+    </div>
+</div>
+
+<!-- Modal: Impfung -->
+<div class="modal-overlay" id="modal-impfung">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2>Impfung</h2><button class="modal-close" onclick="closeModal('modal-impfung')">&times;</button></div>
+        <div class="modal-body">
+            <div class="form-group"><label>Datum</label><input type="date" class="form-control" id="i-datum"></div>
+            <div class="form-group"><label>Name</label><input type="text" class="form-control" id="i-name" placeholder="z.B. 6-fach"></div>
+            <div class="form-group"><label>Arzt</label><input type="text" class="form-control" id="i-arzt"></div>
+            <div class="form-group"><label>Nächster Termin</label><input type="date" class="form-control" id="i-naechster"></div>
+            <div class="form-group"><label>Notiz</label><textarea class="form-control" id="i-notiz" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-impfung')">Abbrechen</button><button class="btn btn-primary" onclick="saveImpfung()">Speichern</button></div>
+    </div>
+</div>
+
+<!-- Modal: Medikament -->
+<div class="modal-overlay" id="modal-medikament">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2>Medikament</h2><button class="modal-close" onclick="closeModal('modal-medikament')">&times;</button></div>
+        <div class="modal-body">
+            <div class="form-group"><label>Name</label><input type="text" class="form-control" id="m-name"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Dosis</label><input type="text" class="form-control" id="m-dosis" placeholder="z.B. 2.5"></div>
+                <div class="form-group"><label>Einheit</label><select class="form-control" id="m-einheit"><option value="ml">ml</option><option value="mg">mg</option><option value="tropfen">Tropfen</option></select></div>
+            </div>
+            <div class="form-group"><label>Frequenz</label><input type="text" class="form-control" id="m-freq" placeholder="z.B. 3x täglich"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Von</label><input type="date" class="form-control" id="m-beginn"></div>
+                <div class="form-group"><label>Bis</label><input type="date" class="form-control" id="m-ende"></div>
+            </div>
+            <div class="form-group"><label>Grund</label><input type="text" class="form-control" id="m-grund"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-medikament')">Abbrechen</button><button class="btn btn-primary" onclick="saveMedikament()">Speichern</button></div>
+    </div>
+</div>
+
+<!-- Modal: Arztbesuch -->
+<div class="modal-overlay" id="modal-arztbesuch">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2>Arztbesuch</h2><button class="modal-close" onclick="closeModal('modal-arztbesuch')">&times;</button></div>
+        <div class="modal-body">
+            <div class="form-group"><label>Datum</label><input type="datetime-local" class="form-control" id="a-datum"></div>
+            <div class="form-group"><label>Arzt</label><input type="text" class="form-control" id="a-arzt"></div>
+            <div class="form-group"><label>Grund</label><input type="text" class="form-control" id="a-grund"></div>
+            <div class="form-group"><label>Diagnose</label><textarea class="form-control" id="a-diagnose" rows="2"></textarea></div>
+            <div class="form-group"><label>Nächster Termin</label><input type="date" class="form-control" id="a-naechster"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-arztbesuch')">Abbrechen</button><button class="btn btn-primary" onclick="saveArztbesuch()">Speichern</button></div>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+
+function setGDatumNow() {
+    const n = new Date();
+    document.getElementById('g-datum').value = n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0') + 'T' + String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+}
+
+function openNewGesundheit() {
+    document.getElementById('g-id').value = '';
+    document.getElementById('gesund-modal-title').textContent = 'Gesundheitseintrag';
+    document.getElementById('g-typ').value = 'symptom';
+    document.getElementById('g-temp').value = '';
+    document.getElementById('g-symptome').value = '';
+    document.getElementById('g-beschr').value = '';
+    pendingFotos = [];
+    document.getElementById('g-foto-preview').innerHTML = '';
+    setGDatumNow();
+    openModal('modal-gesundheit');
+}
+
+function showGTab(id, btn) {
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('gtab-'+id).classList.add('active');
+    btn.classList.add('active');
+}
+
+async function loadAll() {
+    if (!KIND_ID) return;
+    // Symptome
+    const s = await api(`/gesundheit/api/list/${KIND_ID}`);
+    window._gesundheitDaten = s;
+    document.getElementById('symptome-list').innerHTML = !s.length ? '<p class="empty-text">Keine Einträge</p>' :
+        s.map(e => {
+            const fotoHtml = (e.fotos && e.fotos.length)
+                ? `<div class="d-flex gap-1 flex-wrap mt-1">${e.fotos.map(f =>
+                    `<div style="position:relative;display:inline-block;">
+                        <img src="/gesundheit/api/foto/${f.id}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);cursor:pointer;" onclick="openFotoBig('/gesundheit/api/foto/${f.id}')">
+                        <button class="btn btn-danger btn-sm" style="position:absolute;top:-4px;right:-4px;padding:1px 4px;min-height:18px;font-size:0.65rem;border-radius:50%;" onclick="event.stopPropagation();delFoto(${f.id})">&times;</button>
+                    </div>`
+                ).join('')}</div>` : '';
+            return `<div class="timeline-item">
+                <div class="timeline-time">${formatDateTime(e.datum)}</div>
+                <div class="timeline-content">
+                    <div class="timeline-type">${esc(e.typ)}${e.temperatur ? ' '+e.temperatur+'\u00B0C' : ''}</div>
+                    <div class="timeline-detail">${esc(e.symptome||'')} ${esc(e.beschreibung||'')}</div>
+                    ${fotoHtml}
+                    <button class="btn btn-outline btn-sm mt-1" onclick="uploadFotoZu(${e.id})"><svg class="icon"><use href="#icon-camera"/></svg> Foto</button>
+                </div>
+                <div class="timeline-actions">
+                    <button class="btn btn-outline btn-sm btn-icon" onclick="editG(${e.id})"><svg class="icon"><use href="#icon-edit"/></svg></button>
+                    <button class="btn btn-outline btn-sm btn-icon" onclick="delG(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button>
+                </div>
+            </div>`;
+        }).join('');
+    // Impfungen
+    const i = await api(`/gesundheit/api/impfungen/${KIND_ID}`);
+    document.getElementById('impfungen-list').innerHTML = !i.length ? '<p class="empty-text">Keine Impfungen</p>' :
+        i.map(e=>`<div class="timeline-item"><div class="timeline-time">${formatDate(e.datum)}</div><div class="timeline-content"><div class="timeline-type">${esc(e.name)}</div><div class="timeline-detail">${esc(e.arzt||'')}</div>${e.naechster_termin?`<div class="timeline-detail">Nächster: ${formatDate(e.naechster_termin)}</div>`:''}</div><div class="timeline-actions"><button class="btn btn-outline btn-sm btn-icon" onclick="delI(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button></div></div>`).join('');
+    // Medikamente
+    const m = await api(`/gesundheit/api/medikamente/${KIND_ID}`);
+    document.getElementById('medikamente-list').innerHTML = !m.length ? '<p class="empty-text">Keine Medikamente</p>' :
+        m.map(e=>`<div class="timeline-item"><div class="timeline-time">${formatDate(e.beginn)}</div><div class="timeline-content"><div class="timeline-type">${esc(e.name)} ${esc(e.dosis||'')} ${esc(e.einheit||'')}</div><div class="timeline-detail">${esc(e.frequenz||'')} - ${esc(e.grund||'')}</div></div><div class="timeline-actions"><button class="btn btn-outline btn-sm btn-icon" onclick="delM(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button></div></div>`).join('');
+    // Arztbesuche
+    const a = await api(`/gesundheit/api/arztbesuche/${KIND_ID}`);
+    document.getElementById('arztbesuche-list').innerHTML = !a.length ? '<p class="empty-text">Keine Arztbesuche</p>' :
+        a.map(e=>`<div class="timeline-item"><div class="timeline-time">${formatDateTime(e.datum)}</div><div class="timeline-content"><div class="timeline-type">${esc(e.grund)}</div><div class="timeline-detail">${esc(e.arzt||'')} ${e.diagnose?'- '+esc(e.diagnose):''}</div></div><div class="timeline-actions"><button class="btn btn-outline btn-sm btn-icon" onclick="delA(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button></div></div>`).join('');
+}
+
+let pendingFotos = [];
+
+async function captureGFoto() {
+    const blobs = await GlobalCamera.captureMultiple();
+    if (!blobs || !blobs.length) return;
+    pendingFotos.push(...blobs);
+    renderGPreview();
+}
+
+function renderGPreview() {
+    const preview = document.getElementById('g-foto-preview');
+    preview.innerHTML = pendingFotos.map((blob, i) => {
+        const url = URL.createObjectURL(blob);
+        return `<div style="position:relative;">
+            <img src="${url}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;border:1px solid var(--border-color);">
+            <button type="button" class="btn btn-danger btn-sm" style="position:absolute;top:-4px;right:-4px;padding:1px 4px;min-height:18px;font-size:0.65rem;border-radius:50%;" onclick="pendingFotos.splice(${i},1);renderGPreview();">&times;</button>
+        </div>`;
+    }).join('');
+}
+
+function editG(id) {
+    const e = window._gesundheitDaten.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('g-id').value = e.id;
+    document.getElementById('gesund-modal-title').textContent = 'Eintrag bearbeiten';
+    if (e.datum) {
+        const d = new Date(e.datum);
+        document.getElementById('g-datum').value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+    document.getElementById('g-typ').value = e.typ || '';
+    document.getElementById('g-temp').value = e.temperatur || '';
+    document.getElementById('g-symptome').value = e.symptome || '';
+    document.getElementById('g-beschr').value = e.beschreibung || '';
+    openModal('modal-gesundheit');
+}
+
+async function saveGesundheit() {
+    const id = document.getElementById('g-id').value;
+    const datumVal = document.getElementById('g-datum').value;
+    const body = {
+        kind_id: KIND_ID, typ: document.getElementById('g-typ').value,
+        datum: datumVal ? new Date(datumVal).toISOString() : new Date().toISOString(),
+        temperatur: parseFloat(document.getElementById('g-temp').value) || null,
+        symptome: document.getElementById('g-symptome').value,
+        beschreibung: document.getElementById('g-beschr').value,
+    };
+    try {
+        let r;
+        if (id) { r = await api(`/gesundheit/api/update/${id}`, {method:'PUT', body}); r = {id}; }
+        else { r = await api('/gesundheit/api/create', {method:'POST', body}); }
+        // Fotos hochladen
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        for (let i = 0; i < pendingFotos.length; i++) {
+            const fd = new FormData();
+            fd.append('foto', pendingFotos[i], pendingFotos[i].name || `foto_${i}.jpg`);
+            const fHeaders = {};
+            if (csrfToken) fHeaders['X-CSRFToken'] = csrfToken;
+            const fResp = await fetch(`/gesundheit/api/${r.id}/foto`, {method: 'POST', body: fd, headers: fHeaders});
+            if (!fResp.ok) {
+                const fErr = await fResp.json().catch(() => ({}));
+                throw new Error(fErr.error || 'Foto-Upload fehlgeschlagen');
+            }
+        }
+        pendingFotos = [];
+        document.getElementById('g-foto-preview').innerHTML = '';
+        document.getElementById('g-id').value = '';
+        document.getElementById('g-datum').value = '';
+        document.getElementById('gesund-modal-title').textContent = 'Gesundheitseintrag';
+        closeModal('modal-gesundheit');
+        showToast('Gespeichert', 'success');
+        loadAll();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function uploadFotoZu(eintragId) {
+    const blob = await GlobalCamera.capture();
+    if (!blob) return;
+    const fd = new FormData();
+    fd.append('foto', blob, blob.name || 'foto.jpg');
+    const fHeaders = {};
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (csrfToken) fHeaders['X-CSRFToken'] = csrfToken;
+    try {
+        const fResp = await fetch(`/gesundheit/api/${eintragId}/foto`, {method: 'POST', body: fd, headers: fHeaders});
+        if (!fResp.ok) {
+            const fErr = await fResp.json().catch(() => ({}));
+            throw new Error(fErr.error || 'Foto-Upload fehlgeschlagen');
+        }
+        showToast('Foto gespeichert', 'success');
+        loadAll();
+    } catch(e) { showToast(e.message || 'Fehler beim Upload', 'error'); }
+}
+
+function openFotoBig(url) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active';
+    overlay.style.zIndex = '3000';
+    overlay.style.cursor = 'pointer';
+    overlay.innerHTML = `<img src="${url}" style="max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.4);">`;
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+}
+
+async function delFoto(id) {
+    if (!await confirm('Foto löschen?', {danger: true})) return;
+    await api(`/gesundheit/api/foto/${id}`, {method: 'DELETE'});
+    showToast('Foto gelöscht', 'success');
+    loadAll();
+}
+async function saveImpfung() { try { await api('/gesundheit/api/impfungen/create',{method:'POST',body:{kind_id:KIND_ID,datum:document.getElementById('i-datum').value,name:document.getElementById('i-name').value,arzt:document.getElementById('i-arzt').value,naechster_termin:document.getElementById('i-naechster').value||null,notiz:document.getElementById('i-notiz').value}}); closeModal('modal-impfung'); showToast('Gespeichert','success'); loadAll(); } catch(e){showToast(e.message,'error');} }
+async function saveMedikament() { try { await api('/gesundheit/api/medikamente/create',{method:'POST',body:{kind_id:KIND_ID,name:document.getElementById('m-name').value,dosis:document.getElementById('m-dosis').value,einheit:document.getElementById('m-einheit').value,frequenz:document.getElementById('m-freq').value,beginn:document.getElementById('m-beginn').value,ende:document.getElementById('m-ende').value||null,grund:document.getElementById('m-grund').value}}); closeModal('modal-medikament'); showToast('Gespeichert','success'); loadAll(); } catch(e){showToast(e.message,'error');} }
+async function saveArztbesuch() { try { await api('/gesundheit/api/arztbesuche/create',{method:'POST',body:{kind_id:KIND_ID,datum:new Date(document.getElementById('a-datum').value).toISOString(),arzt:document.getElementById('a-arzt').value,grund:document.getElementById('a-grund').value,diagnose:document.getElementById('a-diagnose').value,naechster_termin:document.getElementById('a-naechster').value||null}}); closeModal('modal-arztbesuch'); showToast('Gespeichert','success'); loadAll(); } catch(e){showToast(e.message,'error');} }
+
+async function delG(id){if(!await confirm('Löschen?',{danger:true}))return;await api(`/gesundheit/api/delete/${id}`,{method:'DELETE'});showToast('Gelöscht');loadAll();}
+async function delI(id){if(!await confirm('Löschen?',{danger:true}))return;await api(`/gesundheit/api/impfungen/delete/${id}`,{method:'DELETE'});showToast('Gelöscht');loadAll();}
+async function delM(id){if(!await confirm('Löschen?',{danger:true}))return;await api(`/gesundheit/api/medikamente/delete/${id}`,{method:'DELETE'});showToast('Gelöscht');loadAll();}
+async function delA(id){if(!await confirm('Löschen?',{danger:true}))return;await api(`/gesundheit/api/arztbesuche/delete/${id}`,{method:'DELETE'});showToast('Gelöscht');loadAll();}
+
+document.getElementById('i-datum').value = new Date().toISOString().split('T')[0];
+document.getElementById('m-beginn').value = new Date().toISOString().split('T')[0];
+loadAll();
+</script>
+{% endblock %}

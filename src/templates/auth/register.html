@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrierung - BabyApp</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/buttons.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}?v={{ cache_buster }}">
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <h1>Willkommen!</h1>
+            <p class="text-muted mb-2">Erstelle dein Passwort für <strong>{{ user.username }}</strong></p>
+            {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}
+            <div style="padding:0.5rem;background:#fce4ec;color:#c62828;border-radius:6px;font-size:0.85rem;margin-bottom:0.75rem;">{{ message }}</div>
+            {% endfor %}{% endif %}{% endwith %}
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="password" name="password" class="form-control" placeholder="Passwort (min. 6 Zeichen)" required>
+                <input type="password" name="password2" class="form-control" placeholder="Passwort wiederholen" required>
+                <button type="submit" class="btn btn-primary btn-block btn-lg">Konto erstellen</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

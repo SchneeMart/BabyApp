@@ -1,0 +1,157 @@
+/* =============================================================
+   BASE -- Fonts, CSS-Variablen & Grundlayout
+   Farbschema: Warmes Braun-Grün, matt, bodenständig
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    /* Warmes Grün + Braun */
+    --primary: #5d7a54;
+    --primary-hover: #6e8e64;
+    --dark-bg: #3b3028;
+    --page-bg: #f5f1ec;
+
+    --text-light: #f0ebe5;
+    --text-dark: #3b3028;
+    --card-bg: #fffcf8;
+    --border-color: #ddd5ca;
+
+    --primary-5:  color-mix(in srgb, var(--primary), white 95%);
+    --primary-10: color-mix(in srgb, var(--primary), white 90%);
+    --primary-20: color-mix(in srgb, var(--primary), white 80%);
+    --primary-30: color-mix(in srgb, var(--primary), white 70%);
+    --primary-35: color-mix(in srgb, var(--primary), white 65%);
+    --primary-50: color-mix(in srgb, var(--primary), white 50%);
+
+    --accent: #8b6e4e;
+    --accent-light: #a68b6b;
+
+    --success: #6b8e5a;
+    --warning: #c49a3c;
+    --danger: #b55b4a;
+    --info: #5b7f8e;
+
+    --font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    --nav-width-collapsed: 56px;
+    --nav-width-expanded: 240px;
+}
+
+html, body { height: 100%; overflow-x: hidden; }
+
+html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-30) transparent;
+}
+html::-webkit-scrollbar { width: 8px; height: 8px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb { background: var(--primary-30); border-radius: 4px; }
+html::-webkit-scrollbar-thumb:hover { background: var(--primary-50); }
+
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    background-color: var(--page-bg);
+    color: var(--text-dark);
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1 { font-size: 1.75rem; font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 0.75rem; color: var(--text-dark); }
+h2 { font-size: 1.25rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.015em; margin: 0 0 0.5rem; color: var(--text-dark); }
+h3 { font-size: 1rem; font-weight: 600; line-height: 1.4; margin: 0 0 0.5rem; color: var(--accent); }
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-in > * {
+    opacity: 0;
+    animation: fadeInUp 0.4s ease forwards;
+}
+.animate-in > *:nth-child(1) { animation-delay: 0.03s; }
+.animate-in > *:nth-child(2) { animation-delay: 0.06s; }
+.animate-in > *:nth-child(3) { animation-delay: 0.09s; }
+.animate-in > *:nth-child(4) { animation-delay: 0.12s; }
+.animate-in > *:nth-child(5) { animation-delay: 0.15s; }
+.animate-in > *:nth-child(6) { animation-delay: 0.18s; }
+.animate-in > *:nth-child(7) { animation-delay: 0.21s; }
+.animate-in > *:nth-child(8) { animation-delay: 0.24s; }
+
+*, *::before, *::after { box-sizing: border-box; }
+a { color: var(--primary); }
+a:hover { color: var(--primary-hover); }
+
+/* =============================================================
+   READONLY MODE -- für Leser-Rolle (Token read-only)
+   ============================================================= */
+html.readonly-mode .btn-primary,
+html.readonly-mode .btn-success,
+html.readonly-mode .btn-danger,
+html.readonly-mode .quick-action,
+html.readonly-mode .timer-btn,
+html.readonly-mode .modal-footer .btn-primary,
+html.readonly-mode button[onclick*="save"],
+html.readonly-mode button[onclick*="create"],
+html.readonly-mode button[onclick*="delete"],
+html.readonly-mode button[onclick*="del"],
+html.readonly-mode button[onclick*="stop"],
+html.readonly-mode button[onclick*="start"],
+html.readonly-mode button[onclick*="toggle"],
+html.readonly-mode button[onclick*="quick"],
+html.readonly-mode button[onclick*="upload"],
+html.readonly-mode button[onclick*="capture"],
+html.readonly-mode button[onclick*="openModal"],
+html.readonly-mode button[onclick*="init"],
+html.readonly-mode .page-header .btn {
+    opacity: 0.35;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+html.readonly-mode .timeline-actions { display: none; }
+html.readonly-mode::after {
+    content: 'Nur-Lesen-Modus';
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: white; padding: 4px 16px;
+    border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+    z-index: 9999; pointer-events: none; opacity: 0.8;
+}
+
+/* =============================================================
+   DARK MODE -- für nächtliches Füttern
+   ============================================================= */
+html.dark-mode {
+    --primary: #7a9e6e;
+    --primary-hover: #8fb582;
+    --dark-bg: #1a1814;
+    --page-bg: #222018;
+    --text-light: #d4cfc5;
+    --text-dark: #d4cfc5;
+    --card-bg: #2c2a24;
+    --border-color: #3e3a32;
+    --accent: #b5a48a;
+    --accent-light: #8a7e6a;
+}
+html.dark-mode body { background-color: var(--page-bg); color: var(--text-dark); }
+html.dark-mode .form-control { background: #333028; color: var(--text-dark); border-color: var(--border-color); }
+html.dark-mode .modal-content { background: var(--card-bg); }
+html.dark-mode .modal-body .form-group { background: #333028; }
+html.dark-mode .modal-body .form-group > label:first-child { background: #333028; }
+html.dark-mode .stat-card { background: var(--card-bg); }
+html.dark-mode .timeline-item { background: var(--card-bg); }
+html.dark-mode .quick-action { background: var(--card-bg); }
+html.dark-mode .module-tile { background: var(--card-bg); }
+html.dark-mode .login-wrapper { background: linear-gradient(145deg, #2c2a24 0%, #1a1814 100%); }
+html.dark-mode .login-card { background: var(--card-bg); border-color: var(--border-color); }

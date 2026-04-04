@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ kind.name }} - BabyApp</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/buttons.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cards.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}?v={{ cache_buster }}">
+    <style>
+        body { padding: 1rem; max-width: 700px; margin: 0 auto; }
+        .share-header { display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; }
+        .share-avatar { width:56px; height:56px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:800; }
+    </style>
+</head>
+<body>
+    <div class="share-header">
+        <div class="share-avatar">{{ kind.name[0] }}</div>
+        <div>
+            <h1 style="margin:0;">{{ kind.name }}</h1>
+            <div class="text-muted text-sm">{{ kind.alter_text }} | Geb. {{ kind.geburtsdatum.strftime('%d.%m.%Y') }}</div>
+        </div>
+    </div>
+
+    {% if berechtigung == 'read' %}
+    <div class="badge badge-info mb-2" style="font-size:0.85rem;padding:0.3rem 0.8rem;">Nur-Lesen-Zugriff</div>
+    {% else %}
+    <div class="badge badge-warning mb-2" style="font-size:0.85rem;padding:0.3rem 0.8rem;">Lese- und Schreibzugriff</div>
+    {% endif %}
+
+    <!-- Tagesstatistik -->
+    <div class="stat-grid mb-2">
+        <div class="stat-card">
+            <div class="stat-card-value">{{ stats.fuetterungen_heute }}</div>
+            <div class="stat-card-label">Fütterungen heute</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-value">{{ stats.schlaf_heute }}</div>
+            <div class="stat-card-label">Schlafphasen heute</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-value">{{ stats.windeln_heute }}</div>
+            <div class="stat-card-label">Windeln heute</div>
+        </div>
+    </div>
+
+    <!-- Letzte Fütterungen -->
+    {% if fuetterungen %}
+    <div class="card mb-2">
+        <h2>Letzte Fütterungen</h2>
+        {% for e in fuetterungen %}
+        <div style="display:flex; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid var(--border-color); font-size:0.85rem;">
+            <span style="font-weight:700; color:var(--accent); min-width:80px;">{{ e.beginn.strftime('%d.%m. %H:%M') }}</span>
+            <span>{{ e.typ }}{% if e.dauer_minuten %} ({{ e.dauer_minuten }} Min.){% endif %}{% if e.menge_ml %} {{ e.menge_ml }} ml{% endif %}{% if e.seite %} {{ e.seite }}{% endif %}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Letzter Schlaf -->
+    {% if schlaf %}
+    <div class="card mb-2">
+        <h2>Letzter Schlaf</h2>
+        {% for e in schlaf %}
+        <div style="display:flex; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid var(--border-color); font-size:0.85rem;">
+            <span style="font-weight:700; color:var(--accent); min-width:80px;">{{ e.beginn.strftime('%d.%m. %H:%M') }}</span>
+            <span>{{ e.typ }}{% if e.dauer_minuten %} ({{ e.dauer_minuten }} Min.){% endif %}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Wachstum -->
+    {% if wachstum %}
+    <div class="card mb-2">
+        <h2>Wachstum</h2>
+        {% for e in wachstum %}
+        <div style="display:flex; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid var(--border-color); font-size:0.85rem;">
+            <span style="font-weight:700; color:var(--accent); min-width:80px;">{{ e.datum.strftime('%d.%m.%Y') }}</span>
+            <span>{% if e.gewicht_kg %}{{ e.gewicht_kg }} kg{% endif %} {% if e.groesse_cm %}| {{ e.groesse_cm }} cm{% endif %} {% if e.kopfumfang_cm %}| KU {{ e.kopfumfang_cm }} cm{% endif %}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="text-align:center; margin-top:2rem; font-size:0.8rem; color:var(--accent-light);">
+        BabyApp | Geteilte Ansicht
+    </div>
+</body>
+</html>

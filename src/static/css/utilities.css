@@ -1,0 +1,86 @@
+/* =============================================================
+   UTILITIES -- Hilfsklassen (Natur-Thema)
+   ============================================================= */
+
+.d-none { display: none !important; }
+.d-flex { display: flex; }
+.d-grid { display: grid; }
+.gap-1 { gap: 0.5rem; }
+.gap-2 { gap: 1rem; }
+.gap-3 { gap: 1.5rem; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: var(--accent-light); }
+.text-primary { color: var(--primary); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.text-sm { font-size: 0.85rem; }
+.text-xs { font-size: 0.75rem; }
+.fw-bold { font-weight: 700; }
+.fw-extra { font-weight: 800; }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.w-full { width: 100%; }
+.rounded { border-radius: 8px; }
+
+/* Status-Badges */
+.badge {
+    display: inline-flex; align-items: center;
+    padding: 0.15rem 0.5rem; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.03em;
+}
+.badge-primary { background: var(--primary-10); color: var(--primary); }
+.badge-success { background: #e8efe5; color: var(--success); }
+.badge-danger { background: #f5e0dc; color: var(--danger); }
+.badge-warning { background: #f5eed8; color: var(--warning); }
+.badge-info { background: #dde8ec; color: var(--info); }
+
+/* Seiten-Titel-Zeile */
+.page-header {
+    display: flex; justify-content: space-between;
+    align-items: center; flex-wrap: wrap; gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.page-header h1 { margin: 0; }
+
+/* Tabs */
+.tab-bar {
+    display: flex; gap: 0; border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1rem; overflow-x: auto;
+}
+.tab-btn {
+    padding: 0.6rem 1rem; border: none; background: none;
+    font-family: inherit; font-weight: 600; font-size: 0.85rem;
+    color: var(--accent-light); cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.2s;
+}
+.tab-btn:hover { color: var(--primary); }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.2s ease; }
+
+/* Login */
+.login-wrapper {
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center;
+    background: linear-gradient(145deg, #e8e0d4 0%, #d4ccba 40%, #c5bda8 100%);
+    padding: 1rem;
+}
+.login-card {
+    background: var(--card-bg); border-radius: 16px;
+    padding: 2.5rem; width: 100%; max-width: 400px;
+    box-shadow: 0 12px 40px rgba(59, 48, 40, 0.12);
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+.login-card h1 { color: var(--primary); margin-bottom: 0.5rem; }
+.login-card .form-control { margin-bottom: 0.75rem; }

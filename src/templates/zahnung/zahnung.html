@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon"><use href="#icon-tooth"/></svg> Zahnung</h1>
+</div>
+
+<div class="card">
+    <div class="d-flex justify-between items-center mb-2">
+        <h2>Zahndiagramm</h2>
+        <span class="badge badge-primary" id="zahn-count">0/20</span>
+    </div>
+
+    <div id="zahn-diagramm" style="max-width:500px; margin:0 auto;"></div>
+</div>
+
+<div id="zahn-detail" class="card mt-2" style="display:none;">
+    <div class="d-flex justify-between items-center">
+        <h2 id="zahn-detail-name"></h2>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('zahn-detail').style.display='none'">&times;</button>
+    </div>
+    <div class="form-row mt-1">
+        <div class="form-group"><label>Durchbruch</label><input type="date" class="form-control" id="z-durchbruch"></div>
+        <div class="form-group"><label>Ausfall</label><input type="date" class="form-control" id="z-ausfall"></div>
+    </div>
+    <div class="form-group"><label>Notiz</label><textarea class="form-control" id="z-notiz" rows="2"></textarea></div>
+    <div class="form-actions">
+        <button class="btn btn-outline" onclick="document.getElementById('zahn-detail').style.display='none'">Abbrechen</button>
+        <button class="btn btn-primary" onclick="saveZahn()">Speichern</button>
+    </div>
+</div>
+
+<!-- Zahnliste -->
+<div class="card mt-2">
+    <h2>Durchgebrochene Zähne</h2>
+    <div id="zahn-liste" class="timeline"></div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+let zahnDaten = {};
+let selectedZahn = null;
+
+const ZAEHNE = {
+    oben: [
+        {nr:5, kurz:'5er', name:'2. Backenzahn rechts', typ:'backenzahn'},
+        {nr:4, kurz:'4er', name:'1. Backenzahn rechts', typ:'backenzahn'},
+        {nr:3, kurz:'3er', name:'Eckzahn rechts', typ:'eckzahn'},
+        {nr:2, kurz:'2er', name:'Seitl. Schneidezahn rechts', typ:'schneidezahn'},
+        {nr:1, kurz:'1er', name:'Mittl. Schneidezahn rechts', typ:'schneidezahn'},
+        {nr:6, kurz:'1er', name:'Mittl. Schneidezahn links', typ:'schneidezahn'},
+        {nr:7, kurz:'2er', name:'Seitl. Schneidezahn links', typ:'schneidezahn'},
+        {nr:8, kurz:'3er', name:'Eckzahn links', typ:'eckzahn'},
+        {nr:9, kurz:'4er', name:'1. Backenzahn links', typ:'backenzahn'},
+        {nr:10, kurz:'5er', name:'2. Backenzahn links', typ:'backenzahn'},
+    ],
+    unten: [
+        {nr:15, kurz:'5er', name:'2. Backenzahn links', typ:'backenzahn'},
+        {nr:14, kurz:'4er', name:'1. Backenzahn links', typ:'backenzahn'},
+        {nr:13, kurz:'3er', name:'Eckzahn links', typ:'eckzahn'},
+        {nr:12, kurz:'2er', name:'Seitl. Schneidezahn links', typ:'schneidezahn'},
+        {nr:11, kurz:'1er', name:'Mittl. Schneidezahn links', typ:'schneidezahn'},
+        {nr:16, kurz:'1er', name:'Mittl. Schneidezahn rechts', typ:'schneidezahn'},
+        {nr:17, kurz:'2er', name:'Seitl. Schneidezahn rechts', typ:'schneidezahn'},
+        {nr:18, kurz:'3er', name:'Eckzahn rechts', typ:'eckzahn'},
+        {nr:19, kurz:'4er', name:'1. Backenzahn rechts', typ:'backenzahn'},
+        {nr:20, kurz:'5er', name:'2. Backenzahn rechts', typ:'backenzahn'},
+    ]
+};
+
+function zahnSVG(typ, hat, selected) {
+    const fill = hat ? 'var(--primary)' : '#e8e0e4';
+    const stroke = selected ? '#3b3028' : (hat ? '#4a6342' : '#ccc');
+    const sw = selected ? '2' : '1.5';
+    if (typ === 'schneidezahn') {
+        return `<svg viewBox="0 0 30 44" width="100%" height="100%">
+            <path d="M5 4 C5 1, 25 1, 25 4 L26 28 C26 38, 18 43, 15 43 C12 43, 4 38, 4 28 Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+            <path d="M8 10 C8 8, 22 8, 22 10" fill="none" stroke="${stroke}" stroke-width="0.8" opacity="0.4"/>
+        </svg>`;
+    }
+    if (typ === 'eckzahn') {
+        return `<svg viewBox="0 0 28 46" width="100%" height="100%">
+            <path d="M6 6 C4 2, 24 2, 22 6 L24 24 C24 36, 18 45, 14 45 C10 45, 4 36, 4 24 Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+            <path d="M9 12 L14 6 L19 12" fill="none" stroke="${stroke}" stroke-width="0.8" opacity="0.4"/>
+        </svg>`;
+    }
+    // backenzahn
+    return `<svg viewBox="0 0 34 42" width="100%" height="100%">
+        <path d="M4 6 C4 2, 30 2, 30 6 L31 26 C31 36, 22 41, 17 41 C12 41, 3 36, 3 26 Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+        <ellipse cx="12" cy="10" rx="4" ry="3" fill="none" stroke="${stroke}" stroke-width="0.7" opacity="0.4"/>
+        <ellipse cx="22" cy="10" rx="4" ry="3" fill="none" stroke="${stroke}" stroke-width="0.7" opacity="0.4"/>
+    </svg>`;
+}
+
+function renderDiagramm() {
+    const container = document.getElementById('zahn-diagramm');
+    const count = Object.keys(zahnDaten).length;
+    document.getElementById('zahn-count').textContent = `${count}/20`;
+
+    let html = '';
+
+    // Oberkiefer
+    html += '<div style="text-align:center;font-size:0.75rem;color:#999;font-weight:600;margin-bottom:4px;">OBERKIEFER</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin-bottom:2px;">';
+    for (const z of ZAEHNE.oben) {
+        const hat = !!zahnDaten[z.nr];
+        const sel = selectedZahn === z.nr;
+        html += `<div onclick="selectZahn(${z.nr})" style="cursor:pointer;text-align:center;padding:2px;border-radius:6px;transition:all 0.15s;${sel?'background:var(--primary-10);':''}" title="${z.name}">
+            <div style="height:44px;">${zahnSVG(z.typ, hat, sel)}</div>
+            <div style="font-size:0.6rem;color:${hat?'var(--primary)':'#bbb'};font-weight:700;margin-top:1px;">${z.nr}</div>
+        </div>`;
+    }
+    html += '</div>';
+
+    // Trennlinie (Zahnfleisch)
+    html += '<div style="height:6px;background:linear-gradient(to bottom,#ddd5ca,#ebe5e0,#ddd5ca);border-radius:3px;margin:4px 0;"></div>';
+
+    // Unterkiefer
+    html += '<div style="display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin-top:2px;">';
+    for (const z of ZAEHNE.unten) {
+        const hat = !!zahnDaten[z.nr];
+        const sel = selectedZahn === z.nr;
+        html += `<div onclick="selectZahn(${z.nr})" style="cursor:pointer;text-align:center;padding:2px;border-radius:6px;transition:all 0.15s;${sel?'background:var(--primary-10);':''}" title="${z.name}">
+            <div style="font-size:0.6rem;color:${hat?'var(--primary)':'#bbb'};font-weight:700;margin-bottom:1px;">${z.nr}</div>
+            <div style="height:44px;transform:scaleY(-1);">${zahnSVG(z.typ, hat, sel)}</div>
+        </div>`;
+    }
+    html += '</div>';
+    html += '<div style="text-align:center;font-size:0.75rem;color:#999;font-weight:600;margin-top:4px;">UNTERKIEFER</div>';
+
+    container.innerHTML = html;
+
+    // Zahnliste
+    renderListe();
+}
+
+function renderListe() {
+    const liste = document.getElementById('zahn-liste');
+    const eintraege = Object.values(zahnDaten).sort((a, b) => {
+        if (!a.durchbruch_datum) return 1;
+        if (!b.durchbruch_datum) return -1;
+        return a.durchbruch_datum.localeCompare(b.durchbruch_datum);
+    });
+    if (!eintraege.length) {
+        liste.innerHTML = '<p class="empty-text">Noch keine Zähne erfasst. Klicke auf einen Zahn im Diagramm.</p>';
+        return;
+    }
+    liste.innerHTML = eintraege.map(z => `<div class="timeline-item" style="border-left:3px solid var(--primary);">
+        <div class="timeline-time">${z.durchbruch_datum ? formatDate(z.durchbruch_datum) : '-'}</div>
+        <div class="timeline-content">
+            <div class="timeline-type">${z.name}</div>
+            <div class="timeline-detail">Zahn #${z.zahn_nr}${z.ausfall_datum ? ' | Ausgefallen: ' + formatDate(z.ausfall_datum) : ''}</div>
+            ${z.notiz ? '<div class="timeline-detail">' + z.notiz + '</div>' : ''}
+        </div>
+        <div class="timeline-actions">
+            <button class="btn btn-outline btn-sm" onclick="selectZahn(${z.zahn_nr})">Bearbeiten</button>
+        </div>
+    </div>`).join('');
+}
+
+function selectZahn(nr) {
+    selectedZahn = nr;
+    const allZaehne = [...ZAEHNE.oben, ...ZAEHNE.unten];
+    const z = allZaehne.find(t => t.nr === nr);
+    const detail = document.getElementById('zahn-detail');
+    detail.style.display = 'block';
+    const pos = nr <= 10 ? 'Oben' : 'Unten';
+    document.getElementById('zahn-detail-name').textContent = `${pos}: ${z ? z.name : 'Zahn #' + nr}`;
+    const d = zahnDaten[nr] || {};
+    document.getElementById('z-durchbruch').value = d.durchbruch_datum || '';
+    document.getElementById('z-ausfall').value = d.ausfall_datum || '';
+    document.getElementById('z-notiz').value = d.notiz || '';
+    renderDiagramm();
+    detail.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+async function saveZahn() {
+    try {
+        await api('/zahnung/api/upsert', { method:'POST', body:{
+            kind_id: KIND_ID, zahn_nr: selectedZahn,
+            durchbruch_datum: document.getElementById('z-durchbruch').value || null,
+            ausfall_datum: document.getElementById('z-ausfall').value || null,
+            notiz: document.getElementById('z-notiz').value || null,
+        }});
+        showToast('Zahn gespeichert', 'success');
+        document.getElementById('zahn-detail').style.display = 'none';
+        selectedZahn = null;
+        loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function loadData() {
+    if (!KIND_ID) return;
+    const r = await api(`/zahnung/api/list/${KIND_ID}`);
+    zahnDaten = r.erfasst || {};
+    renderDiagramm();
+}
+
+loadData();
+</script>
+{% endblock %}

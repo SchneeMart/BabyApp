@@ -1,0 +1,52 @@
+/* =============================================================
+   TABLES -- Tabellen (Natur-Thema)
+   ============================================================= */
+
+.table-container {
+    overflow-x: auto; width: 100%;
+    border-radius: 8px; border: 1px solid var(--border-color);
+}
+
+table {
+    width: 100%; border-collapse: collapse;
+}
+
+th, td {
+    padding: 0.6rem 0.8rem;
+    text-align: left; font-size: 0.875rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    background: var(--primary-5);
+    font-weight: 700; font-size: 0.8rem;
+    color: var(--primary); text-transform: uppercase;
+    letter-spacing: 0.03em;
+    position: sticky; top: 0; z-index: 10;
+}
+
+tr:hover { background: var(--primary-5); }
+tr:last-child td { border-bottom: none; }
+
+.table-actions { display: flex; gap: 0.25rem; }
+.table-actions .btn { padding: 0.2rem 0.4rem; min-height: unset; font-size: 0.75rem; }
+
+@media (max-width: 768px) {
+    .table-responsive thead { display: none; }
+    .table-responsive tr {
+        display: block; margin-bottom: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px; padding: 0.5rem;
+        background: var(--card-bg);
+    }
+    .table-responsive td {
+        display: flex; justify-content: space-between;
+        border-bottom: 1px solid #f0ebe5;
+        padding: 0.4rem 0.5rem;
+    }
+    .table-responsive td::before {
+        content: attr(data-label);
+        font-weight: 600; color: var(--accent-light); font-size: 0.8rem;
+    }
+    .table-responsive td:last-child { border-bottom: none; }
+}

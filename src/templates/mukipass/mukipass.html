@@ -1,0 +1,150 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1 id="mukipass-title"><svg class="icon"><use href="#icon-clipboard"/></svg> {% if kind and kind.land == 'DE' %}Gelbes U-Heft{% else %}Mutter-Kind-Pass{% endif %}</h1>
+</div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="showMkTab('untersuchungen',this)">Untersuchungen</button>
+    <button class="tab-btn" onclick="showMkTab('impfplan',this)">Impfplan</button>
+</div>
+
+<div id="mktab-untersuchungen" class="tab-content active">
+    <button class="btn btn-outline mb-2" id="btn-init-muki" style="display:none;" onclick="initMuki()">{% if kind and kind.land == 'DE' %}U-Heft{% else %}MuKi-Pass{% endif %} initialisieren</button>
+    <div id="untersuchungen-list"></div>
+</div>
+
+<div id="mktab-impfplan" class="tab-content">
+    <p class="text-sm text-muted mb-2">Österreichisches Gratisimpfprogramm -- Soll-Termine basierend auf Geburtsdatum</p>
+    <div id="impfplan-list"></div>
+</div>
+
+<!-- Modal: Untersuchung dokumentieren -->
+<div class="modal-overlay" id="modal-muki">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2 id="muki-modal-title">Untersuchung</h2><button class="modal-close" onclick="closeModal('modal-muki')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="mk-id">
+            <div class="form-group"><label>Durchgeführt am</label><input type="date" class="form-control" id="mk-datum"></div>
+            <div class="form-group"><label>Arzt</label><input type="text" class="form-control" id="mk-arzt"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Gewicht (kg)</label><input type="number" class="form-control" id="mk-gewicht" step="0.01"></div>
+                <div class="form-group"><label>Größe (cm)</label><input type="number" class="form-control" id="mk-groesse" step="0.1"></div>
+                <div class="form-group"><label>KU (cm)</label><input type="number" class="form-control" id="mk-ku" step="0.1"></div>
+            </div>
+            <div class="form-group"><label>Befund</label><textarea class="form-control" id="mk-befund" rows="3"></textarea></div>
+            <div class="form-group"><label>Notiz</label><textarea class="form-control" id="mk-notiz" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-muki')">Abbrechen</button><button class="btn btn-primary" onclick="saveMuki()">Speichern</button></div>
+    </div>
+</div>
+
+<script>
+function showMkTab(id,btn) { document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById('mktab-'+id).classList.add('active'); btn.classList.add('active'); if(id==='impfplan') loadImpfplan(); }
+
+async function loadData() {
+    if (!KIND_ID) return;
+    const resp = await api(`/mukipass/api/list/${KIND_ID}`);
+    const data = resp.eintraege || [];
+    const c = document.getElementById('untersuchungen-list');
+
+    // Titel dynamisch setzen
+    document.querySelector('.page-header h1').innerHTML = `<svg class="icon"><use href="#icon-clipboard"/></svg> ${resp.land_label || 'Vorsorge'}`;
+
+    if (!data.length) {
+        document.getElementById('btn-init-muki').style.display = 'inline-flex';
+        const planName = resp.land === 'DE' ? 'U-Heft' : 'MuKi-Pass';
+        c.innerHTML = `<p class="empty-text">${planName} noch nicht initialisiert</p>`;
+        return;
+    }
+    document.getElementById('btn-init-muki').style.display = 'none';
+
+    const heute = new Date().toISOString().split('T')[0];
+    window._mukiDaten = data;
+    c.innerHTML = data.map(e => {
+        const erledigt = !!e.durchgefuehrt_am;
+        const ueberfaellig = !erledigt && e.soll_datum && e.soll_datum < heute;
+        const bald = !erledigt && e.soll_datum && !ueberfaellig;
+        const borderColor = erledigt ? 'var(--success)' : ueberfaellig ? 'var(--danger)' : 'var(--accent)';
+
+        return `<div class="timeline-item" style="border-left:3px solid ${borderColor}; ${erledigt?'':'cursor:pointer;'}" onclick="editMuki(${e.id})">
+            <div style="min-width:50px;">
+                <span class="badge ${erledigt?'badge-success':ueberfaellig?'badge-danger':'badge-warning'}" style="font-size:0.8rem;">${esc(e.name)}</span>
+            </div>
+            <div class="timeline-content">
+                <div class="timeline-type">${esc(e.bezeichnung)}</div>
+                <div class="timeline-detail">
+                    Soll: ${e.soll_datum ? formatDate(e.soll_datum) : '-'}
+                    ${erledigt ? ' | Erledigt: ' + formatDate(e.durchgefuehrt_am) : ''}
+                    ${ueberfaellig ? ' | <span style="color:var(--danger);font-weight:700;">Überfällig!</span>' : ''}
+                </div>
+                ${erledigt && (e.gewicht||e.groesse) ? `<div class="timeline-detail">${e.gewicht?e.gewicht+' kg':''}${e.groesse?' | '+e.groesse+' cm':''}${e.kopfumfang?' | KU '+e.kopfumfang+' cm':''}</div>` : ''}
+                ${e.befund ? `<div class="timeline-detail">${esc(e.befund)}</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function editMuki(id) {
+    const e = window._mukiDaten.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('mk-id').value = e.id;
+    document.getElementById('muki-modal-title').textContent = (e.name || '') + ' - ' + (e.bezeichnung || '');
+    document.getElementById('mk-datum').value = e.durchgefuehrt_am || new Date().toISOString().split('T')[0];
+    document.getElementById('mk-arzt').value = e.arzt || '';
+    document.getElementById('mk-gewicht').value = e.gewicht || '';
+    document.getElementById('mk-groesse').value = e.groesse || '';
+    document.getElementById('mk-ku').value = e.kopfumfang || '';
+    document.getElementById('mk-befund').value = e.befund || '';
+    document.getElementById('mk-notiz').value = e.notiz || '';
+    openModal('modal-muki');
+}
+
+async function saveMuki() {
+    const id = document.getElementById('mk-id').value;
+    try {
+        await api(`/mukipass/api/update/${id}`, {method:'PUT', body:{
+            durchgefuehrt_am: document.getElementById('mk-datum').value || null,
+            arzt: document.getElementById('mk-arzt').value,
+            gewicht: parseFloat(document.getElementById('mk-gewicht').value) || null,
+            groesse: parseFloat(document.getElementById('mk-groesse').value) || null,
+            kopfumfang: parseFloat(document.getElementById('mk-ku').value) || null,
+            befund: document.getElementById('mk-befund').value,
+            notiz: document.getElementById('mk-notiz').value,
+        }});
+        closeModal('modal-muki'); showToast('Gespeichert', 'success'); loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function initMuki() {
+    try {
+        await api(`/mukipass/api/init/${KIND_ID}`, {method:'POST'});
+        showToast(r.plan + ' initialisiert', 'success'); loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function loadImpfplan() {
+    if (!KIND_ID) return;
+    const resp = await api(`/mukipass/api/impfplan/${KIND_ID}`);
+    const data = resp.impfungen || [];
+    const c = document.getElementById('impfplan-list');
+    const heute = new Date().toISOString().split('T')[0];
+
+    // Plan-Name anzeigen
+    document.querySelector('#mktab-impfplan > p').textContent = resp.plan_name || 'Impfplan';
+
+    c.innerHTML = data.map(e => {
+        const ueberfaellig = !e.erledigt && e.soll_datum < heute;
+        return `<div class="timeline-item" style="border-left:3px solid ${e.erledigt?'var(--success)':ueberfaellig?'var(--danger)':'var(--warning)'};">
+            <div class="timeline-time">${formatDate(e.soll_datum)}</div>
+            <div class="timeline-content">
+                <div class="timeline-type">${esc(e.name)} ${e.erledigt?'<span class="badge badge-success">Erledigt</span>':ueberfaellig?'<span class="badge badge-danger">Überfällig</span>':''}</div>
+                <div class="timeline-detail">${esc(e.beschreibung)}</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+loadData();
+</script>
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends "layout.html" %}
+{% block head %}
+<script src="{{ url_for('static', filename='js/who-perzentile.js') }}?v={{ cache_buster }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon"><use href="#icon-trending-up"/></svg> Wachstum</h1>
+    <button class="btn" onclick="openModal('modal-wachstum')"><svg class="icon"><use href="#icon-plus"/></svg> Messung</button>
+</div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('kurven',this)">Perzentilkurven</button>
+    <button class="tab-btn" onclick="showTab('liste',this)">Messungen</button>
+</div>
+
+<!-- Perzentilkurven -->
+<div id="tab-kurven" class="tab-content active">
+    <div class="card mb-2">
+        <h3>Gewicht</h3>
+        <canvas id="chart-gewicht" style="width:100%;height:280px;"></canvas>
+    </div>
+    <div class="card mb-2">
+        <h3>Größe</h3>
+        <canvas id="chart-groesse" style="width:100%;height:280px;"></canvas>
+    </div>
+    <div class="card">
+        <h3>Kopfumfang</h3>
+        <canvas id="chart-kopf" style="width:100%;height:280px;"></canvas>
+    </div>
+    <p class="text-xs text-muted text-center mt-1">Perzentilkurven nach WHO Child Growth Standards (2006) -- verwendet im österreichischen Mutter-Kind-Pass</p>
+</div>
+
+<!-- Messungen-Liste -->
+<div id="tab-liste" class="tab-content">
+    <div id="wachstum-body"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-wachstum">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2 id="wachstum-modal-title">Messung erfassen</h2><button class="modal-close" onclick="closeModal('modal-wachstum')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="w-id">
+            <div class="form-group"><label>Datum</label><input type="date" class="form-control" id="w-datum"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Gewicht (kg)</label><input type="number" class="form-control" id="w-gewicht" step="0.01" placeholder="z.B. 5.30"></div>
+                <div class="form-group"><label>Größe (cm)</label><input type="number" class="form-control" id="w-groesse" step="0.1" placeholder="z.B. 62.5"></div>
+            </div>
+            <div class="form-group"><label>Kopfumfang (cm)</label><input type="number" class="form-control" id="w-kopf" step="0.1" placeholder="z.B. 40.0"></div>
+            <div class="form-group"><label>Notiz</label><textarea class="form-control" id="w-notiz" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-wachstum')">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveWachstum()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+let wachstumsDaten = [];
+let geschlecht = 'w';
+
+function showTab(id, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    btn.classList.add('active');
+    if (id === 'kurven') drawCharts();
+}
+
+function drawCharts() {
+    if (!wachstumsDaten.length) return;
+    const suffix = geschlecht === 'm' ? '_m' : '_w';
+
+    const gewPunkte = wachstumsDaten.filter(p => p.gewicht_kg).map(p => ({alter_monate: p.alter_monate, wert: p.gewicht_kg}));
+    const grPunkte = wachstumsDaten.filter(p => p.groesse_cm).map(p => ({alter_monate: p.alter_monate, wert: p.groesse_cm}));
+    const koPunkte = wachstumsDaten.filter(p => p.kopfumfang_cm).map(p => ({alter_monate: p.alter_monate, wert: p.kopfumfang_cm}));
+
+    drawPerzentilChart('chart-gewicht', 'gewicht' + suffix, gewPunkte, 'kg', '#8b6e4e');
+    drawPerzentilChart('chart-groesse', 'groesse' + suffix, grPunkte, 'cm', '#5d7a54');
+    drawPerzentilChart('chart-kopf', 'kopf' + suffix, koPunkte, 'cm', '#5b7f8e');
+}
+
+async function loadData() {
+    if (!KIND_ID) return;
+
+    // Perzentil-Daten laden
+    const perz = await api(`/wachstum/api/perzentile/${KIND_ID}`);
+    geschlecht = perz.geschlecht || 'w';
+    wachstumsDaten = perz.punkte || [];
+
+    drawCharts();
+
+    // Messungen-Liste
+    const data = await api(`/wachstum/api/list/${KIND_ID}`);
+    const body = document.getElementById('wachstum-body');
+    if (!data.length) {
+        body.innerHTML = '<p class="empty-text">Keine Messungen. Füge die erste Messung hinzu!</p>';
+        return;
+    }
+    window._wachstumDaten = data;
+    body.innerHTML = data.map(e => `<div class="timeline-item" style="border-left:3px solid var(--success);">
+        <div class="timeline-time">${formatDate(e.datum)}</div>
+        <div class="timeline-content">
+            <div class="d-flex gap-2 flex-wrap">
+                ${e.gewicht_kg ? `<span class="badge badge-primary">${e.gewicht_kg} kg</span>` : ''}
+                ${e.groesse_cm ? `<span class="badge badge-success">${e.groesse_cm} cm</span>` : ''}
+                ${e.kopfumfang_cm ? `<span class="badge badge-info">${e.kopfumfang_cm} cm KU</span>` : ''}
+            </div>
+            ${e.notiz ? `<div class="timeline-detail mt-1">${esc(e.notiz)}</div>` : ''}
+        </div>
+        <div class="timeline-actions">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="editWachstum(${e.id})"><svg class="icon"><use href="#icon-edit"/></svg></button>
+            <button class="btn btn-outline btn-sm btn-icon" onclick="deleteWachstum(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button>
+        </div>
+    </div>`).join('');
+}
+
+function editWachstum(id) {
+    const e = window._wachstumDaten.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('w-id').value = e.id;
+    document.getElementById('wachstum-modal-title').textContent = 'Messung bearbeiten';
+    document.getElementById('w-datum').value = e.datum || '';
+    document.getElementById('w-gewicht').value = e.gewicht_kg || '';
+    document.getElementById('w-groesse').value = e.groesse_cm || '';
+    document.getElementById('w-kopf').value = e.kopfumfang_cm || '';
+    document.getElementById('w-notiz').value = e.notiz || '';
+    openModal('modal-wachstum');
+}
+
+async function saveWachstum() {
+    const id = document.getElementById('w-id').value;
+    const body = {
+        kind_id: KIND_ID,
+        datum: document.getElementById('w-datum').value || new Date().toISOString().split('T')[0],
+        gewicht_kg: parseFloat(document.getElementById('w-gewicht').value) || null,
+        groesse_cm: parseFloat(document.getElementById('w-groesse').value) || null,
+        kopfumfang_cm: parseFloat(document.getElementById('w-kopf').value) || null,
+        notiz: document.getElementById('w-notiz').value || null,
+    };
+    try {
+        if (id) { await api(`/wachstum/api/update/${id}`, {method:'PUT', body}); }
+        else { await api('/wachstum/api/create', {method:'POST', body}); }
+        closeModal('modal-wachstum');
+        showToast('Gespeichert', 'success');
+        document.getElementById('w-id').value = '';
+        document.getElementById('wachstum-modal-title').textContent = 'Messung erfassen';
+        loadData();
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function deleteWachstum(id) {
+    if (!await confirm('Messung löschen?', {danger: true})) return;
+    await api(`/wachstum/api/delete/${id}`, {method: 'DELETE'});
+    showToast('Gelöscht', 'success');
+    loadData();
+}
+
+// Resize-Handler für Charts
+window.addEventListener('resize', () => { if (document.getElementById('tab-kurven').classList.contains('active')) drawCharts(); });
+
+document.getElementById('w-datum').value = new Date().toISOString().split('T')[0];
+loadData();
+</script>
+{% endblock %}

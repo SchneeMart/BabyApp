@@ -1,0 +1,36 @@
+{
+    "name": "BabyApp",
+    "short_name": "BabyApp",
+    "description": "Baby-Tracker für Fütterung, Schlaf, Windeln, Wachstum und mehr",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f5f1ec",
+    "theme_color": "#3b3028",
+    "lang": "de",
+    "icons": [
+        {"src": "/static/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+        {"src": "/static/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+    ],
+    "shortcuts": [
+        {
+            "name": "Fütterung",
+            "short_name": "Füttern",
+            "url": "/fuetterung/",
+            "icons": [{"src": "/static/img/icon-192.png", "sizes": "192x192"}]
+        },
+        {
+            "name": "Schlaf",
+            "short_name": "Schlaf",
+            "url": "/schlaf/",
+            "icons": [{"src": "/static/img/icon-192.png", "sizes": "192x192"}]
+        },
+        {
+            "name": "Windeln",
+            "short_name": "Windel",
+            "url": "/windeln/",
+            "icons": [{"src": "/static/img/icon-192.png", "sizes": "192x192"}]
+        }
+    ],
+    "categories": ["health", "lifestyle"]
+}

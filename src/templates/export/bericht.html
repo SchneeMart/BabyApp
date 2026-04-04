@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Arztbericht - {{ kind.name }}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Nunito', sans-serif; color: #3b3028; font-size: 11pt; line-height: 1.5; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { font-size: 18pt; color: #5d7a54; border-bottom: 2px solid #5d7a54; padding-bottom: 8px; margin-bottom: 12px; }
+        h2 { font-size: 13pt; color: #8b6e4e; margin: 16px 0 8px; border-bottom: 1px solid #ddd5ca; padding-bottom: 4px; }
+        .header-info { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 10pt; color: #666; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 10pt; margin-bottom: 12px; }
+        .info-grid .label { font-weight: 700; color: #8b6e4e; }
+        table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 9.5pt; }
+        th { background: #f5f1ec; color: #5d7a54; font-weight: 700; text-align: left; padding: 6px 8px; border: 1px solid #ddd5ca; }
+        td { padding: 5px 8px; border: 1px solid #ddd5ca; }
+        tr:nth-child(even) { background: #faf8f5; }
+        .no-data { color: #999; font-style: italic; padding: 8px 0; }
+        .print-btn { display: block; margin: 20px auto; padding: 10px 30px; background: #5d7a54; color: white; border: none; border-radius: 8px; font-size: 12pt; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .print-btn:hover { background: #6e8e64; }
+        @media print {
+            .print-btn { display: none; }
+            body { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">Drucken / Als PDF speichern</button>
+
+    <h1>Arztbericht: {{ kind.name }}</h1>
+    <div class="header-info">
+        <span>Zeitraum: {{ von.strftime('%d.%m.%Y') }} bis {{ bis.strftime('%d.%m.%Y') }}</span>
+        <span>Erstellt: {{ now.strftime('%d.%m.%Y %H:%M') if now else '' }}</span>
+    </div>
+
+    <div class="info-grid">
+        <div><span class="label">Name:</span> {{ kind.name }}</div>
+        <div><span class="label">Geburtsdatum:</span> {{ kind.geburtsdatum.strftime('%d.%m.%Y') }}</div>
+        <div><span class="label">Alter:</span> {{ kind.alter_text }}</div>
+        <div><span class="label">Geschlecht:</span> {{ kind.geschlecht or '-' }}</div>
+        {% if kind.blutgruppe %}<div><span class="label">Blutgruppe:</span> {{ kind.blutgruppe }}</div>{% endif %}
+        {% if kind.fruehgeburt_wochen %}<div><span class="label">Frühgeburt:</span> {{ kind.fruehgeburt_wochen }} Wochen vor ET</div>{% endif %}
+    </div>
+
+    {% if wachstum %}
+    <h2>Wachstum</h2>
+    <table>
+        <thead><tr><th>Datum</th><th>Gewicht</th><th>Größe</th><th>Kopfumfang</th></tr></thead>
+        <tbody>
+        {% for e in wachstum %}
+        <tr><td>{{ e.datum.strftime('%d.%m.%Y') }}</td><td>{{ e.gewicht_kg or '-' }} kg</td><td>{{ e.groesse_cm or '-' }} cm</td><td>{{ e.kopfumfang_cm or '-' }} cm</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if fuetterungen %}
+    <h2>Fütterung ({{ fuetterungen|length }} Einträge)</h2>
+    <table>
+        <thead><tr><th>Datum</th><th>Typ</th><th>Dauer/Menge</th><th>Details</th></tr></thead>
+        <tbody>
+        {% for e in fuetterungen[:20] %}
+        <tr>
+            <td>{{ e.beginn.strftime('%d.%m. %H:%M') }}</td>
+            <td>{{ e.typ }}</td>
+            <td>{% if e.dauer_minuten %}{{ e.dauer_minuten }} Min.{% endif %}{% if e.menge_ml %}{{ e.menge_ml }} ml{% endif %}</td>
+            <td>{{ e.seite or '' }}{{ e.lebensmittel or '' }}{{ e.notiz or '' }}</td>
+        </tr>
+        {% endfor %}
+        {% if fuetterungen|length > 20 %}<tr><td colspan="4">... und {{ fuetterungen|length - 20 }} weitere</td></tr>{% endif %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if schlaf %}
+    <h2>Schlaf ({{ schlaf|length }} Einträge)</h2>
+    <table>
+        <thead><tr><th>Datum</th><th>Beginn</th><th>Dauer</th><th>Typ</th></tr></thead>
+        <tbody>
+        {% for e in schlaf[:15] %}
+        <tr><td>{{ e.beginn.strftime('%d.%m.') }}</td><td>{{ e.beginn.strftime('%H:%M') }}</td><td>{{ e.dauer_minuten or '-' }} Min.</td><td>{{ e.typ }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if gesundheit %}
+    <h2>Gesundheitseinträge</h2>
+    <table>
+        <thead><tr><th>Datum</th><th>Typ</th><th>Temperatur</th><th>Symptome</th><th>Beschreibung</th></tr></thead>
+        <tbody>
+        {% for e in gesundheit %}
+        <tr><td>{{ e.datum.strftime('%d.%m.%Y') }}</td><td>{{ e.typ }}</td><td>{{ e.temperatur or '-' }}</td><td>{{ e.symptome or '-' }}</td><td>{{ e.beschreibung or '-' }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if impfungen %}
+    <h2>Impfungen</h2>
+    <table>
+        <thead><tr><th>Datum</th><th>Impfung</th><th>Arzt</th><th>Nächster Termin</th></tr></thead>
+        <tbody>
+        {% for e in impfungen %}
+        <tr><td>{{ e.datum.strftime('%d.%m.%Y') }}</td><td>{{ e.name }}</td><td>{{ e.arzt or '-' }}</td><td>{{ e.naechster_termin.strftime('%d.%m.%Y') if e.naechster_termin else '-' }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if medikamente %}
+    <h2>Medikamente</h2>
+    <table>
+        <thead><tr><th>Name</th><th>Dosis</th><th>Frequenz</th><th>Von</th><th>Bis</th><th>Grund</th></tr></thead>
+        <tbody>
+        {% for e in medikamente %}
+        <tr><td>{{ e.name }}</td><td>{{ e.dosis or '' }} {{ e.einheit or '' }}</td><td>{{ e.frequenz or '-' }}</td><td>{{ e.beginn.strftime('%d.%m.%Y') }}</td><td>{{ e.ende.strftime('%d.%m.%Y') if e.ende else 'laufend' }}</td><td>{{ e.grund or '-' }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div style="margin-top:30px; padding-top:10px; border-top:1px solid #ddd5ca; font-size:9pt; color:#999; text-align:center;">
+        Erstellt mit BabyApp | {{ now.strftime('%d.%m.%Y %H:%M') if now else '' }}
+    </div>
+</body>
+</html>

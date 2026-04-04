@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notfallinfo - {{ kind.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cards.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}?v={{ cache_buster }}">
+    <style>body{padding:1rem;max-width:600px;margin:0 auto;} .info-row{display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #eee;} .info-label{font-weight:700;color:#666;font-size:0.85rem;} .info-value{font-weight:600;}</style>
+</head>
+<body>
+    <div class="card" style="border-left:3px solid #b55b4a;">
+        <h1 style="color:#b55b4a;">Notfallinfo: {{ kind.name }}</h1>
+        <p class="text-muted">Geburtsdatum: {{ kind.geburtsdatum.strftime('%d.%m.%Y') }} | {{ kind.alter_text }}</p>
+
+        {% if info %}
+        {% if info.kinderarzt_name %}
+        <h3 class="mt-2">Kinderarzt</h3>
+        <div class="info-row"><span class="info-label">Name</span><span class="info-value">{{ info.kinderarzt_name }}</span></div>
+        {% if info.kinderarzt_telefon %}<div class="info-row"><span class="info-label">Telefon</span><a href="tel:{{ info.kinderarzt_telefon }}" class="info-value">{{ info.kinderarzt_telefon }}</a></div>{% endif %}
+        {% if info.kinderarzt_adresse %}<div class="info-row"><span class="info-label">Adresse</span><span class="info-value">{{ info.kinderarzt_adresse }}</span></div>{% endif %}
+        {% endif %}
+
+        {% if info.krankenhaus %}
+        <h3 class="mt-2">Krankenhaus</h3>
+        <div class="info-row"><span class="info-label">Name</span><span class="info-value">{{ info.krankenhaus }}</span></div>
+        {% if info.krankenhaus_telefon %}<div class="info-row"><span class="info-label">Telefon</span><a href="tel:{{ info.krankenhaus_telefon }}" class="info-value">{{ info.krankenhaus_telefon }}</a></div>{% endif %}
+        {% endif %}
+
+        {% if info.blutgruppe %}<div class="info-row"><span class="info-label">Blutgruppe</span><span class="info-value">{{ info.blutgruppe }}</span></div>{% endif %}
+        {% if info.allergien %}<div class="info-row" style="border-color:#f44336;"><span class="info-label" style="color:#f44336;">Allergien</span><span class="info-value">{{ info.allergien }}</span></div>{% endif %}
+        {% if info.chronische_erkrankungen %}<div class="info-row"><span class="info-label">Chronisch</span><span class="info-value">{{ info.chronische_erkrankungen }}</span></div>{% endif %}
+
+        {% if info.notfallkontakt_name %}
+        <h3 class="mt-2">Notfallkontakt</h3>
+        <div class="info-row"><span class="info-label">{{ info.notfallkontakt_beziehung or 'Kontakt' }}</span><span class="info-value">{{ info.notfallkontakt_name }}</span></div>
+        {% if info.notfallkontakt_telefon %}<div class="info-row"><span class="info-label">Telefon</span><a href="tel:{{ info.notfallkontakt_telefon }}" class="info-value">{{ info.notfallkontakt_telefon }}</a></div>{% endif %}
+        {% endif %}
+
+        {% else %}
+        <p class="empty-text">Keine Notfallinfo hinterlegt.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

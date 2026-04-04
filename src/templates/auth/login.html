@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - BabyApp</title>
+    <meta name="theme-color" content="#3b3028">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-192.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/buttons.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}?v={{ cache_buster }}">
+    <script src="{{ url_for('static', filename='js/global-modals.js') }}?v={{ cache_buster }}"></script>
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card" style="animation: scaleIn 0.4s ease both;">
+            <div style="margin-bottom: 1rem;">
+                <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="BabyApp" style="width:72px;height:72px;border-radius:16px;box-shadow:0 4px 16px rgba(59,48,40,0.15);">
+            </div>
+            <h1>BabyApp</h1>
+            <p class="text-muted mb-2">Melde dich an um fortzufahren</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div style="padding:0.5rem;background:#f5e0dc;color:#b55b4a;border-radius:6px;font-size:0.85rem;margin-bottom:0.75rem;">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="username" class="form-control" placeholder="Benutzername" required autofocus>
+                <input type="password" name="password" class="form-control" placeholder="Passwort" required>
+                <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;margin-bottom:1rem;justify-content:flex-start;">
+                    <input type="checkbox" name="remember"> Angemeldet bleiben
+                </label>
+                <button type="submit" class="btn btn-primary btn-block btn-lg">Anmelden</button>
+            </form>
+            <p class="text-muted text-sm mt-2">
+                <a href="{{ url_for('auth.request_reset') }}">Passwort vergessen?</a>
+            </p>
+        </div>
+    </div>
+
+    {% include 'partials/_icon_sprites.html' %}
+</body>
+</html>

@@ -1,0 +1,294 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon"><use href="#icon-settings"/></svg> Einstellungen</h1>
+</div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="showETab('kinder',this)">Kinder</button>
+    <button class="tab-btn" onclick="showETab('profil',this)">Profil</button>
+    {% if current_user.is_admin %}<button class="tab-btn" onclick="showETab('app',this)">App</button>{% endif %}
+</div>
+
+<!-- Kinder -->
+<div id="etab-kinder" class="tab-content active">
+    {% if current_user.kann_kind_erstellen %}
+    <button class="btn mb-2" onclick="openKindModal()"><svg class="icon"><use href="#icon-plus"/></svg> Kind hinzufügen</button>
+    {% else %}
+    <p class="text-sm text-muted mb-2">Nur Mutter, Vater oder Admin können Kinder anlegen. Deine Rolle: <strong>{{ current_user.rolle_label }}</strong></p>
+    {% endif %}
+    <div id="kinder-list"></div>
+</div>
+
+<!-- Profil -->
+<div id="etab-profil" class="tab-content">
+    <div class="card">
+        <h3>Passwort ändern</h3>
+        <div class="form-group"><label>Aktuelles Passwort</label><input type="password" class="form-control" id="pw-aktuell"></div>
+        <div class="form-group"><label>Neues Passwort</label><input type="password" class="form-control" id="pw-neu"></div>
+        <div class="form-group"><label>Wiederholen</label><input type="password" class="form-control" id="pw-neu2"></div>
+        <button class="btn btn-primary" onclick="changePW()">Speichern</button>
+    </div>
+</div>
+
+<!-- App (Admin) -->
+{% if current_user.is_admin %}
+<div id="etab-app" class="tab-content">
+    <div class="card">
+        <h3>App-Einstellungen</h3>
+        <div class="form-group"><label>App-Name</label><input type="text" class="form-control" id="s-name"></div>
+        <div class="form-row">
+            <div class="form-group"><label>Primärfarbe</label><input type="color" class="form-control" id="s-color" style="height:40px;padding:2px;"></div>
+            <div class="form-group"><label>Hover-Farbe</label><input type="color" class="form-control" id="s-hover" style="height:40px;padding:2px;"></div>
+        </div>
+        <button class="btn btn-primary mt-2" onclick="saveSettings()">Speichern</button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal: Kind -->
+<div class="modal-overlay" id="modal-kind">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2 id="kind-modal-title">Kind hinzufügen</h2><button class="modal-close" onclick="closeModal('modal-kind')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="k-id">
+            <div class="form-group"><label>Name</label><input type="text" class="form-control" id="k-name"></div>
+            <div class="form-group"><label>Geburtsdatum</label><input type="date" class="form-control" id="k-geb"></div>
+            <div class="form-group"><label>Geschlecht</label><select class="form-control" id="k-geschlecht"><option value="">--</option><option value="m">Männlich</option><option value="w">Weiblich</option></select></div>
+            <div class="form-group"><label>Frühgeburt (Wochen vor ET)</label><input type="number" class="form-control" id="k-frueh" placeholder="0 = keine"></div>
+            <div class="form-group"><label>Blutgruppe</label><input type="text" class="form-control" id="k-blut"></div>
+            <div class="form-group"><label>Land</label>
+                <select class="form-control" id="k-land">
+                    <option value="AT">Österreich</option>
+                    <option value="DE">Deutschland</option>
+                </select>
+                <div class="form-hint">Bestimmt Untersuchungsplan (MuKi-Pass/U-Heft) und Impfplan</div>
+            </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-kind')">Abbrechen</button><button class="btn btn-primary" onclick="saveKind()">Speichern</button></div>
+    </div>
+</div>
+
+<!-- Modal: Freigabe -->
+<div class="modal-overlay" id="modal-freigabe">
+    <div class="modal-content">
+        <div class="modal-header"><h2 id="freigabe-title">Freigabe</h2><button class="modal-close" onclick="closeModal('modal-freigabe')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="fg-kind-id">
+
+            <h3>Benutzer-Freigabe</h3>
+            <p class="text-sm text-muted mb-1">Gib die E-Mail eines registrierten Benutzers ein um Zugriff zu gewähren.</p>
+            <div class="d-flex gap-1 mb-2">
+                <input type="email" class="form-control" id="fg-email" placeholder="E-Mail-Adresse" style="flex:1;">
+                <select class="form-control" id="fg-rolle" style="width:120px;"><option value="read">Lesen</option><option value="write">Schreiben</option></select>
+                <button class="btn btn-primary" onclick="addFreigabe()"><svg class="icon"><use href="#icon-user-plus"/></svg></button>
+            </div>
+            <div id="freigabe-list" class="timeline mb-2"></div>
+
+            <h3 class="mt-2">Link-Freigabe (öffentlich)</h3>
+            <p class="text-sm text-muted mb-1">Erstelle einen Link den du mit jedem teilen kannst -- ohne Registrierung.</p>
+            <div class="d-flex gap-1 mb-2">
+                <select class="form-control" id="tk-rolle" style="width:150px;"><option value="read">Nur lesen</option><option value="write">Lesen & Schreiben</option></select>
+                <button class="btn btn-primary" onclick="addToken()"><svg class="icon"><use href="#icon-link"/></svg> Link erstellen</button>
+            </div>
+            <div id="token-list" class="timeline"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showETab(id,btn) { document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById('etab-'+id).classList.add('active'); btn.classList.add('active'); }
+
+function openKindModal(id, name, geb, geschl, frueh, blut, land) {
+    document.getElementById('k-id').value = id || '';
+    document.getElementById('k-name').value = name || '';
+    document.getElementById('k-geb').value = geb || '';
+    document.getElementById('k-geschlecht').value = geschl || '';
+    document.getElementById('k-frueh').value = frueh || '';
+    document.getElementById('k-blut').value = blut || '';
+    document.getElementById('k-land').value = land || 'AT';
+    document.getElementById('kind-modal-title').textContent = id ? 'Kind bearbeiten' : 'Kind hinzufügen';
+    openModal('modal-kind');
+}
+
+async function loadKinder() {
+    const data = await api('/einstellungen/api/kinder');
+    const c = document.getElementById('kinder-list');
+    if (!data.length) { c.innerHTML='<p class="empty-text">Noch keine Kinder angelegt</p>'; return; }
+    window._kinderDaten = data;
+    c.innerHTML = data.map(k => `<div class="card mb-2" style="border-left:3px solid var(--primary);">
+        <div class="d-flex justify-between items-center">
+            <div>
+                <strong>${esc(k.name)}</strong>
+                <span class="text-muted text-sm"> - ${esc(k.alter_text)}</span>
+                <div class="text-xs text-muted">Geb.: ${formatDate(k.geburtsdatum)} ${k.geschlecht?'| '+esc(k.geschlecht):''} ${k.blutgruppe?'| '+esc(k.blutgruppe):''} | ${k.land==='DE'?'Deutschland':'Österreich'}</div>
+            </div>
+            <div class="d-flex gap-1">
+                <button class="btn btn-outline btn-sm" onclick="openFreigabe(${k.id})" title="Freigabe"><svg class="icon"><use href="#icon-share"/></svg></button>
+                <button class="btn btn-outline btn-sm" onclick="editKind(${k.id})"><svg class="icon"><use href="#icon-edit"/></svg></button>
+                <button class="btn btn-outline btn-sm btn-icon" onclick="delKind(${k.id})"><svg class="icon"><use href="#icon-trash"/></svg></button>
+            </div>
+        </div>
+    </div>`).join('');
+}
+
+async function saveKind() {
+    const id = document.getElementById('k-id').value;
+    const body = {
+        name: document.getElementById('k-name').value,
+        geburtsdatum: document.getElementById('k-geb').value,
+        geschlecht: document.getElementById('k-geschlecht').value || null,
+        fruehgeburt_wochen: parseInt(document.getElementById('k-frueh').value) || null,
+        blutgruppe: document.getElementById('k-blut').value || null,
+        land: document.getElementById('k-land').value || 'AT',
+    };
+    try {
+        if (id) { await api(`/einstellungen/api/kinder/update/${id}`, {method:'PUT', body}); }
+        else { await api('/einstellungen/api/kinder/create', {method:'POST', body}); }
+        closeModal('modal-kind'); showToast('Gespeichert', 'success'); loadKinder();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+function editKind(id) {
+    const k = window._kinderDaten.find(x => x.id === id);
+    if (!k) return;
+    openKindModal(k.id, k.name, k.geburtsdatum, k.geschlecht || '', k.fruehgeburt_wochen || 0, k.blutgruppe || '', k.land || 'AT');
+}
+
+async function delKind(id) {
+    const k = window._kinderDaten.find(x => x.id === id);
+    const name = k ? k.name : '';
+    if (!await confirm(`Kind "${name}" und alle Daten wirklich löschen?`, {danger:true})) return;
+    await api(`/einstellungen/api/kinder/delete/${id}`, {method:'DELETE'});
+    showToast('Gelöscht', 'success'); loadKinder();
+}
+
+// === Freigabe ===
+async function openFreigabe(kindId) {
+    const k = window._kinderDaten.find(x => x.id === kindId);
+    const kindName = k ? k.name : '';
+    document.getElementById('fg-kind-id').value = kindId;
+    document.getElementById('freigabe-title').textContent = `Freigabe: ${kindName}`;
+    openModal('modal-freigabe');
+    loadFreigaben(kindId);
+    loadTokens(kindId);
+}
+
+async function loadFreigaben(kindId) {
+    const data = await api(`/einstellungen/api/kinder/${kindId}/freigaben`);
+    const c = document.getElementById('freigabe-list');
+    if (!data.length) { c.innerHTML='<p class="empty-text">Keine Freigaben</p>'; return; }
+    const rolleLabel = {owner:'Besitzer', write:'Schreiben', read:'Lesen'};
+    c.innerHTML = data.map(f => `<div class="timeline-item">
+        <div class="timeline-content">
+            <div class="timeline-type">${esc(f.username)} <span class="badge ${f.rolle==='owner'?'badge-primary':f.rolle==='write'?'badge-warning':'badge-info'}">${rolleLabel[f.rolle]||esc(f.rolle)}</span></div>
+            <div class="timeline-detail">${esc(f.email)}</div>
+        </div>
+        ${f.rolle !== 'owner' ? `<div class="timeline-actions"><button class="btn btn-outline btn-sm btn-icon" onclick="delFreigabe(${f.id})"><svg class="icon"><use href="#icon-trash"/></svg></button></div>` : ''}
+    </div>`).join('');
+}
+
+async function addFreigabe() {
+    const kindId = document.getElementById('fg-kind-id').value;
+    const email = document.getElementById('fg-email').value;
+    if (!email) { showToast('E-Mail eingeben', 'error'); return; }
+    try {
+        const r = await api(`/einstellungen/api/kinder/${kindId}/freigabe`, {method:'POST', body:{
+            email, rolle: document.getElementById('fg-rolle').value,
+        }});
+        showToast(`Freigabe für ${r.username} erstellt`, 'success');
+        document.getElementById('fg-email').value = '';
+        loadFreigaben(kindId);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function delFreigabe(id) {
+    if (!await confirm('Freigabe entfernen?', {danger:true})) return;
+    await api(`/einstellungen/api/kinder/freigabe/${id}`, {method:'DELETE'});
+    showToast('Entfernt', 'success');
+    loadFreigaben(document.getElementById('fg-kind-id').value);
+}
+
+// === Token-Freigabe ===
+async function loadTokens(kindId) {
+    const data = await api(`/einstellungen/api/kinder/${kindId}/tokens`);
+    const c = document.getElementById('token-list');
+    if (!data.length) { c.innerHTML='<p class="empty-text">Keine Links erstellt</p>'; return; }
+    window._tokenDaten = data;
+    c.innerHTML = data.map(t => `<div class="timeline-item">
+        <div class="timeline-content" style="flex:1;">
+            <div class="timeline-type">
+                <span class="badge ${t.berechtigung==='write'?'badge-warning':'badge-info'}">${t.berechtigung==='write'?'Lesen & Schreiben':'Nur Lesen'}</span>
+            </div>
+            <div class="timeline-detail" style="word-break:break-all;font-family:monospace;font-size:0.75rem;">${esc(t.url)}</div>
+        </div>
+        <div class="timeline-actions d-flex gap-1">
+            <button class="btn btn-outline btn-sm" onclick="copyTokenUrl(${t.id})" title="Kopieren"><svg class="icon"><use href="#icon-copy"/></svg></button>
+            <button class="btn btn-outline btn-sm btn-icon" onclick="delToken(${t.id})"><svg class="icon"><use href="#icon-trash"/></svg></button>
+        </div>
+    </div>`).join('');
+}
+
+async function addToken() {
+    const kindId = document.getElementById('fg-kind-id').value;
+    try {
+        const r = await api(`/einstellungen/api/kinder/${kindId}/token`, {method:'POST', body:{
+            berechtigung: document.getElementById('tk-rolle').value,
+        }});
+        showToast('Link erstellt', 'success');
+        copyToClipboard(r.url);
+        loadTokens(kindId);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function delToken(id) {
+    if (!await confirm('Link deaktivieren?', {danger:true})) return;
+    await api(`/einstellungen/api/kinder/token/${id}`, {method:'DELETE'});
+    showToast('Entfernt', 'success');
+    loadTokens(document.getElementById('fg-kind-id').value);
+}
+
+function copyTokenUrl(id) {
+    const t = window._tokenDaten.find(x => x.id === id);
+    if (t) copyToClipboard(t.url);
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => showToast('Link kopiert!', 'success'));
+}
+
+// === Passwort & Settings ===
+async function changePW() {
+    try {
+        await api('/einstellungen/api/passwort', {method:'POST', body:{
+            aktuell: document.getElementById('pw-aktuell').value,
+            neu: document.getElementById('pw-neu').value,
+            neu2: document.getElementById('pw-neu2').value,
+        }});
+        showToast('Passwort geändert', 'success');
+        ['pw-aktuell','pw-neu','pw-neu2'].forEach(id => document.getElementById(id).value = '');
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function loadSettings() {
+    const d = await api('/einstellungen/api/settings');
+    document.getElementById('s-name').value = d.site_name || 'BabyApp';
+    document.getElementById('s-color').value = d.color_primary || '#5d7a54';
+    document.getElementById('s-hover').value = d.color_primary_hover || '#6e8e64';
+}
+
+async function saveSettings() {
+    try {
+        await api('/einstellungen/api/settings/update', {method:'POST', body:{
+            site_name: document.getElementById('s-name').value,
+            color_primary: document.getElementById('s-color').value,
+            color_primary_hover: document.getElementById('s-hover').value,
+        }});
+        showToast('Gespeichert', 'success');
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+loadKinder();
+{% if current_user.is_admin %}loadSettings();{% endif %}
+</script>
+{% endblock %}

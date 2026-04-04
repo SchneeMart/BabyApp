@@ -1,0 +1,158 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon"><use href="#icon-flag"/></svg> Meilensteine</h1>
+    <div class="d-flex gap-1">
+        <button class="btn btn-outline" id="btn-init" style="display:none;" onclick="initMeilensteine()">Standard laden</button>
+        <button class="btn" onclick="openModal('modal-meilenstein')"><svg class="icon"><use href="#icon-plus"/></svg> Eigener</button>
+    </div>
+</div>
+
+<!-- Fortschrittsbalken -->
+<div class="card mb-2" id="progress-card" style="display:none;">
+    <div class="d-flex justify-between items-center mb-1">
+        <span class="fw-bold text-sm" id="progress-text">0/0 erreicht</span>
+        <span class="badge badge-primary" id="progress-pct">0%</span>
+    </div>
+    <div style="height:8px;background:var(--primary-10);border-radius:4px;overflow:hidden;">
+        <div id="progress-bar" style="height:100%;background:var(--primary);border-radius:4px;transition:width 0.3s;width:0%;"></div>
+    </div>
+</div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" data-kat="alle" onclick="filterKat('alle',this)">Alle</button>
+    <button class="tab-btn" data-kat="motorik" onclick="filterKat('motorik',this)">Motorik</button>
+    <button class="tab-btn" data-kat="sprache" onclick="filterKat('sprache',this)">Sprache</button>
+    <button class="tab-btn" data-kat="sozial" onclick="filterKat('sozial',this)">Sozial</button>
+    <button class="tab-btn" data-kat="kognitiv" onclick="filterKat('kognitiv',this)">Kognitiv</button>
+    <button class="tab-btn" data-kat="selbststaendigkeit" onclick="filterKat('selbststaendigkeit',this)">Selbstst.</button>
+</div>
+
+<div id="meilensteine-list"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-meilenstein">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2>Eigener Meilenstein</h2><button class="modal-close" onclick="closeModal('modal-meilenstein')">&times;</button></div>
+        <div class="modal-body">
+            <div class="form-group"><label>Titel</label><input type="text" class="form-control" id="ms-titel" placeholder="z.B. Erstes Wort"></div>
+            <div class="form-group"><label>Kategorie</label>
+                <select class="form-control" id="ms-kat">
+                    <option value="motorik">Motorik</option><option value="sprache">Sprache</option>
+                    <option value="sozial">Sozial</option><option value="kognitiv">Kognitiv</option>
+                    <option value="selbststaendigkeit">Selbstständigkeit</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Datum erreicht</label><input type="date" class="form-control" id="ms-datum"></div>
+            <div class="form-group"><label>Notiz</label><textarea class="form-control" id="ms-notiz" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-meilenstein')">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveMeilenstein()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+let currentKat = 'alle';
+let allData = [];
+const katColors = {motorik:'#8b6e4e',sprache:'#5b7f8e',sozial:'#6b8e5a',kognitiv:'#c49a3c',selbststaendigkeit:'#7a6555'};
+const katLabels = {motorik:'Motorik',sprache:'Sprache',sozial:'Sozial',kognitiv:'Kognitiv',selbststaendigkeit:'Selbstständigkeit'};
+
+function filterKat(k, btn) {
+    currentKat = k;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderList();
+}
+
+function renderList() {
+    const filtered = currentKat === 'alle' ? allData : allData.filter(e => e.kategorie === currentKat);
+    const container = document.getElementById('meilensteine-list');
+
+    if (!filtered.length) {
+        container.innerHTML = '<p class="empty-text">Keine Meilensteine in dieser Kategorie</p>';
+        return;
+    }
+
+    container.innerHTML = filtered.map(e => {
+        const color = katColors[e.kategorie] || '#607D8B';
+        const checkboxStyle = e.erreicht
+            ? `background:${color};border-color:${color};`
+            : `background:white;border-color:#ccc;`;
+
+        return `<div class="timeline-item" style="border-left:3px solid ${color};${e.erreicht ? '' : 'opacity:0.7;'}cursor:pointer;"
+                     onclick="toggleMS(${e.id})">
+            <div style="min-width:28px;display:flex;align-items:center;justify-content:center;">
+                <div style="width:22px;height:22px;border-radius:5px;border:2px solid;${checkboxStyle}display:flex;align-items:center;justify-content:center;">
+                    ${e.erreicht ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                </div>
+            </div>
+            <div class="timeline-content" style="flex:1;">
+                <div class="timeline-type" style="${e.erreicht ? '' : 'color:#999;'}">${esc(e.titel)}</div>
+                <div class="timeline-detail">
+                    <span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:0.7rem;font-weight:700;background:${color}18;color:${color};">${katLabels[e.kategorie] || e.kategorie}</span>
+                    ${e.alter_monate != null ? `<span class="text-muted text-xs">~${e.alter_monate} Mon.</span>` : ''}
+                    ${e.datum ? `<span class="text-xs" style="color:${color};">${formatDate(e.datum)}</span>` : ''}
+                </div>
+                ${e.notiz ? `<div class="timeline-detail">${esc(e.notiz)}</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function loadData() {
+    if (!KIND_ID) return;
+    allData = await api(`/meilensteine/api/list/${KIND_ID}`);
+
+    if (!allData.length) {
+        document.getElementById('btn-init').style.display = 'inline-flex';
+        document.getElementById('progress-card').style.display = 'none';
+    } else {
+        document.getElementById('btn-init').style.display = 'none';
+        document.getElementById('progress-card').style.display = 'block';
+        const erreicht = allData.filter(m => m.erreicht).length;
+        const pct = Math.round(erreicht / allData.length * 100);
+        document.getElementById('progress-text').textContent = `${erreicht}/${allData.length} erreicht`;
+        document.getElementById('progress-pct').textContent = `${pct}%`;
+        document.getElementById('progress-bar').style.width = `${pct}%`;
+    }
+    renderList();
+}
+
+async function toggleMS(id) {
+    try {
+        await api(`/meilensteine/api/toggle/${id}`, {method: 'POST', body: {}});
+        loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function initMeilensteine() {
+    try {
+        await api(`/meilensteine/api/init/${KIND_ID}`, {method: 'POST'});
+        showToast('Standard-Meilensteine geladen', 'success');
+        loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function saveMeilenstein() {
+    const titel = document.getElementById('ms-titel').value;
+    if (!titel) { showToast('Titel eingeben', 'error'); return; }
+    try {
+        await api('/meilensteine/api/create', {method: 'POST', body: {
+            kind_id: KIND_ID, titel: titel,
+            kategorie: document.getElementById('ms-kat').value,
+            datum: document.getElementById('ms-datum').value || null,
+            erreicht: !!document.getElementById('ms-datum').value,
+            notiz: document.getElementById('ms-notiz').value || null,
+        }});
+        closeModal('modal-meilenstein');
+        showToast('Meilenstein gespeichert', 'success');
+        loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+loadData();
+</script>
+{% endblock %}

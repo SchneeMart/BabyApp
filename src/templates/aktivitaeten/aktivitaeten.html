@@ -1,0 +1,162 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon" style="color:var(--primary)"><use href="#icon-activity"/></svg> Aktivitäten</h1>
+    <button class="btn" onclick="openModal('modal-akt')"><svg class="icon"><use href="#icon-plus"/></svg> Eintragen</button>
+</div>
+
+<!-- Aktivitätstypen als Quick-Buttons -->
+<div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem;" id="typ-buttons"></div>
+
+<!-- Datum -->
+<div class="d-flex items-center justify-between mb-2">
+    <button class="btn btn-outline btn-sm" onclick="changeDate(-1)">&larr;</button>
+    <strong id="datum-display"></strong>
+    <button class="btn btn-outline btn-sm" onclick="changeDate(1)">&rarr;</button>
+</div>
+
+<div id="timeline" class="timeline"></div>
+
+<!-- Modal: Aktivität eintragen -->
+<div class="modal-overlay" id="modal-akt">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2>Aktivität eintragen</h2><button class="modal-close" onclick="closeModal('modal-akt')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="akt-id">
+            <div class="form-group"><label>Typ</label><select class="form-control" id="akt-typ"></select></div>
+            <div class="form-row">
+                <div class="form-group"><label>Beginn</label><input type="datetime-local" class="form-control" id="akt-beginn"></div>
+                <div class="form-group"><label>Ende</label><input type="datetime-local" class="form-control" id="akt-ende"></div>
+            </div>
+            <div class="form-group"><label>Oder: Dauer (Minuten)</label><input type="number" class="form-control" id="akt-dauer" placeholder="z.B. 15"></div>
+            <div class="form-group"><label>Notiz</label><textarea class="form-control" id="akt-notiz" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('modal-akt')">Abbrechen</button>
+            <button class="btn btn-primary" onclick="saveAkt()">Speichern</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+let currentDate = new Date().toISOString().split('T')[0];
+let typen = [];
+
+function changeDate(d) { const dt = new Date(currentDate); dt.setDate(dt.getDate() + d); currentDate = dt.toISOString().split('T')[0]; loadData(); }
+
+async function loadTypen() {
+    typen = await api('/aktivitaeten/api/typen');
+    // Quick-Buttons
+    document.getElementById('typ-buttons').innerHTML = typen.map(t =>
+        `<button class="quick-action" onclick="quickAkt(${t.id})" style="border-color:${t.farbe}">
+            <div class="qa-icon" style="background:${t.farbe}20; color:${t.farbe};">
+                <svg class="icon"><use href="#icon-${t.icon || 'star'}"/></svg>
+            </div>${t.name}
+        </button>`
+    ).join('');
+    // Select befüllen
+    const sel = document.getElementById('akt-typ');
+    sel.innerHTML = typen.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+}
+
+async function loadData() {
+    if (!KIND_ID) return;
+    document.getElementById('datum-display').textContent = new Date(currentDate + 'T00:00').toLocaleDateString('de-AT', {weekday: 'short', day: 'numeric', month: 'short'});
+    const data = await api(`/aktivitaeten/api/list/${KIND_ID}?datum=${currentDate}`);
+    const container = document.getElementById('timeline');
+    if (!data.length) { container.innerHTML = '<p class="empty-text">Keine Aktivitäten an diesem Tag</p>'; return; }
+    window._aktivDaten = data;
+    container.innerHTML = data.map(e => `<div class="timeline-item" style="border-left:3px solid ${e.typ_farbe || 'var(--accent)'}">
+        <div class="timeline-time">${formatTime(e.beginn)}</div>
+        <div class="timeline-content">
+            <div class="timeline-type">
+                <svg class="icon" style="color:${e.typ_farbe};margin-right:4px;"><use href="#icon-${e.typ_icon || 'star'}"/></svg>
+                ${esc(e.typ_name)}
+            </div>
+            <div class="timeline-detail">${e.dauer_minuten ? formatDauer(e.dauer_minuten) : (e.ende ? '' : 'Läuft...')}</div>
+            ${e.notiz ? `<div class="timeline-detail">${esc(e.notiz)}</div>` : ''}
+        </div>
+        <div class="timeline-actions">
+            ${!e.ende ? `<button class="btn btn-sm btn-success" onclick="stopAkt(${e.id})">Stopp</button>` : ''}
+            <button class="btn btn-outline btn-sm" onclick="editAkt(${e.id})"><svg class="icon"><use href="#icon-edit"/></svg></button>
+            <button class="btn btn-outline btn-sm btn-icon" onclick="delAkt(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button>
+        </div>
+    </div>`).join('');
+}
+
+function quickAkt(typId) {
+    // Öffne Modal mit vorausgewähltem Typ und aktuellem Zeitpunkt
+    document.getElementById('akt-id').value = '';
+    document.getElementById('akt-typ').value = typId;
+    document.getElementById('akt-beginn').value = new Date().toISOString().slice(0, 16);
+    document.getElementById('akt-ende').value = '';
+    document.getElementById('akt-dauer').value = '';
+    document.getElementById('akt-notiz').value = '';
+    openModal('modal-akt');
+}
+
+function editAkt(id) {
+    const e = window._aktivDaten.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('akt-id').value = e.id;
+    document.getElementById('akt-typ').value = e.typ_id;
+    document.getElementById('akt-beginn').value = e.beginn ? new Date(e.beginn).toISOString().slice(0, 16) : '';
+    document.getElementById('akt-ende').value = e.ende ? new Date(e.ende).toISOString().slice(0, 16) : '';
+    document.getElementById('akt-dauer').value = e.dauer_minuten || '';
+    document.getElementById('akt-notiz').value = e.notiz || '';
+    openModal('modal-akt');
+}
+
+async function saveAkt() {
+    const id = document.getElementById('akt-id').value;
+    const beginn = document.getElementById('akt-beginn').value;
+    const ende = document.getElementById('akt-ende').value;
+    const dauer = parseInt(document.getElementById('akt-dauer').value) || null;
+
+    if (!beginn) { showToast('Beginn angeben', 'error'); return; }
+
+    let body = {
+        kind_id: KIND_ID,
+        typ_id: parseInt(document.getElementById('akt-typ').value),
+        beginn: new Date(beginn).toISOString(),
+        ende: ende ? new Date(ende).toISOString() : null,
+        dauer_minuten: dauer,
+        notiz: document.getElementById('akt-notiz').value || null,
+    };
+
+    // Dauer aus Beginn/Ende berechnen wenn beides vorhanden
+    if (body.beginn && body.ende && !body.dauer_minuten) {
+        body.dauer_minuten = Math.round((new Date(body.ende) - new Date(body.beginn)) / 60000);
+    }
+    // Ende aus Beginn+Dauer berechnen wenn nur Dauer
+    if (body.beginn && !body.ende && body.dauer_minuten) {
+        body.ende = new Date(new Date(body.beginn).getTime() + body.dauer_minuten * 60000).toISOString();
+    }
+
+    try {
+        if (id) {
+            await api(`/aktivitaeten/api/update/${id}`, {method: 'PUT', body});
+        } else {
+            await api('/aktivitaeten/api/create', {method: 'POST', body});
+        }
+        closeModal('modal-akt'); showToast('Gespeichert', 'success'); loadData();
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function stopAkt(id) {
+    try {
+        const r = await api(`/aktivitaeten/api/stop/${id}`, {method: 'POST'});
+        showToast(`Beendet (${formatDauer(r.dauer_minuten)})`, 'success'); loadData();
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function delAkt(id) {
+    if (!await confirm('Eintrag löschen?', {danger: true})) return;
+    await api(`/aktivitaeten/api/delete/${id}`, {method: 'DELETE'});
+    showToast('Gelöscht', 'success'); loadData();
+}
+
+loadTypen(); loadData();
+</script>
+{% endblock %}

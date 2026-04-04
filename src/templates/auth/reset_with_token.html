@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neues Passwort - BabyApp</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/buttons.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}?v={{ cache_buster }}">
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <h1>Neues Passwort</h1>
+            {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}
+            <div style="padding:0.5rem;background:#fce4ec;color:#c62828;border-radius:6px;font-size:0.85rem;margin-bottom:0.75rem;">{{ message }}</div>
+            {% endfor %}{% endif %}{% endwith %}
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="password" name="password" class="form-control" placeholder="Neues Passwort (min. 6 Zeichen)" required>
+                <button type="submit" class="btn btn-primary btn-block">Passwort speichern</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

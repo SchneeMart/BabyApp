@@ -1,0 +1,123 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon" style="color:var(--info)"><use href="#icon-droplet"/></svg> Windeln</h1>
+</div>
+
+<!-- Quick Buttons -->
+<div class="stat-grid mb-2">
+    <button class="quick-action" onclick="quickWindel('nass')" style="border-color:var(--info);">
+        <div class="qa-icon" style="background:#dde8ec; color:var(--info);"><svg class="icon"><use href="#icon-droplet"/></svg></div>Nass
+    </button>
+    <button class="quick-action" onclick="quickWindel('stuhl')" style="border-color:var(--warning);">
+        <div class="qa-icon" style="background:#f5eed8; color:var(--warning);"><svg class="icon"><use href="#icon-droplet"/></svg></div>Stuhl
+    </button>
+    <button class="quick-action" onclick="quickWindel('beides')" style="border-color:var(--accent);">
+        <div class="qa-icon" style="background:#f0e6df; color:var(--accent);"><svg class="icon"><use href="#icon-droplet"/></svg></div>Beides
+    </button>
+    <button class="quick-action" onclick="quickWindel('trocken')" style="border-color:var(--success);">
+        <div class="qa-icon" style="background:#e8efe5; color:var(--success);"><svg class="icon"><use href="#icon-check"/></svg></div>Trocken
+    </button>
+</div>
+
+<div class="d-flex items-center justify-between mb-2">
+    <button class="btn btn-outline btn-sm" onclick="changeDate(-1)">&larr;</button>
+    <strong id="datum-display"></strong>
+    <button class="btn btn-outline btn-sm" onclick="changeDate(1)">&rarr;</button>
+</div>
+
+<div class="stat-grid mb-2" id="windel-stats"></div>
+<div id="timeline" class="timeline"></div>
+
+<!-- Modal: Windel bearbeiten -->
+<div class="modal-overlay" id="modal-windel-edit">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2>Windel bearbeiten</h2><button class="modal-close" onclick="closeModal('modal-windel-edit')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="we-id">
+            <div class="form-group"><label>Typ</label><select class="form-control" id="we-typ"><option value="nass">Nass</option><option value="stuhl">Stuhl</option><option value="beides">Beides</option><option value="trocken">Trocken</option></select></div>
+            <div class="form-group"><label>Farbe</label><input type="text" class="form-control" id="we-farbe" placeholder="z.B. gelb, grün"></div>
+            <div class="form-group"><label>Konsistenz</label><input type="text" class="form-control" id="we-konsistenz" placeholder="z.B. weich, fest"></div>
+            <div class="form-group"><label>Notiz</label><textarea class="form-control" id="we-notiz" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-windel-edit')">Abbrechen</button><button class="btn btn-primary" onclick="saveWindelEdit()">Speichern</button></div>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+let currentDate = new Date().toISOString().split('T')[0];
+
+function changeDate(d) { const dt=new Date(currentDate); dt.setDate(dt.getDate()+d); currentDate=dt.toISOString().split('T')[0]; loadData(); }
+
+async function quickWindel(typ) {
+    if (!KIND_ID) return;
+    try {
+        await api('/windeln/api/create', {method:'POST', body:{kind_id:KIND_ID, typ}});
+        showToast('Windel erfasst','success'); loadData();
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+async function loadData() {
+    if (!KIND_ID) return;
+    document.getElementById('datum-display').textContent = new Date(currentDate+'T00:00').toLocaleDateString('de-AT',{weekday:'short',day:'numeric',month:'short'});
+    const data = await api(`/windeln/api/list/${KIND_ID}?datum=${currentDate}`);
+
+    const nass = data.filter(e=>e.typ==='nass'||e.typ==='beides').length;
+    const stuhl = data.filter(e=>e.typ==='stuhl'||e.typ==='beides').length;
+    document.getElementById('windel-stats').innerHTML = `
+        <div class="stat-card"><div class="stat-card-value">${data.length}</div><div class="stat-card-label">Gesamt</div></div>
+        <div class="stat-card"><div class="stat-card-value" style="color:var(--info)">${nass}</div><div class="stat-card-label">Nass</div></div>
+        <div class="stat-card"><div class="stat-card-value" style="color:var(--warning)">${stuhl}</div><div class="stat-card-label">Stuhl</div></div>
+    `;
+
+    const container = document.getElementById('timeline');
+    if (!data.length) { container.innerHTML='<p class="empty-text">Keine Einträge</p>'; return; }
+    window._windelDaten = data;
+    const typColors = {nass:'#5b7f8e', stuhl:'#c49a3c', beides:'#8b6e4e', trocken:'#6b8e5a'};
+    container.innerHTML = data.map(e => `<div class="timeline-item">
+        <div class="timeline-time">${formatTime(e.zeitpunkt)}</div>
+        <div class="timeline-content">
+            <span class="badge" style="background:${typColors[e.typ]}20; color:${typColors[e.typ]}">${esc(e.typ)}</span>
+            ${e.farbe ? `<span class="text-sm text-muted"> ${esc(e.farbe)}</span>` : ''}
+            ${e.notiz ? `<div class="timeline-detail">${esc(e.notiz)}</div>` : ''}
+        </div>
+        <div class="timeline-actions">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="editWindel(${e.id})"><svg class="icon"><use href="#icon-edit"/></svg></button>
+            <button class="btn btn-outline btn-sm btn-icon" onclick="deleteWindel(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button>
+        </div>
+    </div>`).join('');
+}
+
+function editWindel(id) {
+    const e = window._windelDaten.find(x => x.id === id);
+    if (!e) return;
+    openModal('modal-windel-edit');
+    document.getElementById('we-id').value = e.id;
+    document.getElementById('we-typ').value = e.typ;
+    document.getElementById('we-farbe').value = e.farbe || '';
+    document.getElementById('we-konsistenz').value = e.konsistenz || '';
+    document.getElementById('we-notiz').value = e.notiz || '';
+}
+
+async function saveWindelEdit() {
+    const id = document.getElementById('we-id').value;
+    try {
+        await api(`/windeln/api/update/${id}`, {method:'PUT', body:{
+            typ: document.getElementById('we-typ').value,
+            farbe: document.getElementById('we-farbe').value || null,
+            konsistenz: document.getElementById('we-konsistenz').value || null,
+            notiz: document.getElementById('we-notiz').value || null,
+        }});
+        closeModal('modal-windel-edit'); showToast('Gespeichert','success'); loadData();
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+async function deleteWindel(id) {
+    if (!await confirm('Löschen?',{danger:true})) return;
+    await api(`/windeln/api/delete/${id}`,{method:'DELETE'}); showToast('Gelöscht','success'); loadData();
+}
+
+loadData();
+</script>
+{% endblock %}

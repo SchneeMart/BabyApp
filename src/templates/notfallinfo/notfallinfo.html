@@ -1,0 +1,109 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon" style="color:var(--danger)"><use href="#icon-shield"/></svg> Notfallinfo</h1>
+    <button class="btn btn-outline" onclick="shareInfo()"><svg class="icon"><use href="#icon-share"/></svg> Teilen</button>
+</div>
+
+<div class="card" id="notfall-form">
+    <div class="dashboard-grid">
+        <div>
+            <h3>Kinderarzt</h3>
+            <div class="form-group"><label>Name</label><input type="text" class="form-control" id="n-arzt-name"></div>
+            <div class="form-group"><label>Telefon</label><input type="tel" class="form-control" id="n-arzt-tel"></div>
+            <div class="form-group"><label>Adresse</label><input type="text" class="form-control" id="n-arzt-adr"></div>
+        </div>
+        <div>
+            <h3>Krankenhaus</h3>
+            <div class="form-group"><label>Name</label><input type="text" class="form-control" id="n-kh-name"></div>
+            <div class="form-group"><label>Telefon</label><input type="tel" class="form-control" id="n-kh-tel"></div>
+        </div>
+        <div>
+            <h3>Versicherung</h3>
+            <div class="form-group"><label>Versicherung</label><input type="text" class="form-control" id="n-vers"></div>
+            <div class="form-group"><label>Nummer</label><input type="text" class="form-control" id="n-vers-nr"></div>
+        </div>
+        <div>
+            <h3>Notfallkontakt</h3>
+            <div class="form-group"><label>Name</label><input type="text" class="form-control" id="n-kontakt-name"></div>
+            <div class="form-group"><label>Telefon</label><input type="tel" class="form-control" id="n-kontakt-tel"></div>
+            <div class="form-group"><label>Beziehung</label><input type="text" class="form-control" id="n-kontakt-bez" placeholder="z.B. Oma, Onkel"></div>
+        </div>
+    </div>
+    <div class="mt-2">
+        <h3>Medizinisches</h3>
+        <div class="form-row">
+            <div class="form-group"><label>Blutgruppe</label><input type="text" class="form-control" id="n-blut"></div>
+        </div>
+        <div class="form-group"><label>Allergien</label><textarea class="form-control" id="n-allergien" rows="2"></textarea></div>
+        <div class="form-group"><label>Unverträglichkeiten</label><textarea class="form-control" id="n-unvertr" rows="2"></textarea></div>
+        <div class="form-group"><label>Chronische Erkrankungen</label><textarea class="form-control" id="n-chronisch" rows="2"></textarea></div>
+        <div class="form-group"><label>Sonstiges</label><textarea class="form-control" id="n-sonstiges" rows="2"></textarea></div>
+    </div>
+    <div class="form-actions">
+        <button class="btn btn-primary btn-lg" onclick="saveNotfall()">Speichern</button>
+    </div>
+</div>
+
+<script>
+// KIND_ID kommt aus layout.html (global)
+
+async function loadData() {
+    if (!KIND_ID) return;
+    const d = await api(`/notfallinfo/api/get/${KIND_ID}`);
+    if (!d.exists) return;
+    document.getElementById('n-arzt-name').value = d.kinderarzt_name||'';
+    document.getElementById('n-arzt-tel').value = d.kinderarzt_telefon||'';
+    document.getElementById('n-arzt-adr').value = d.kinderarzt_adresse||'';
+    document.getElementById('n-kh-name').value = d.krankenhaus||'';
+    document.getElementById('n-kh-tel').value = d.krankenhaus_telefon||'';
+    document.getElementById('n-vers').value = d.versicherung||'';
+    document.getElementById('n-vers-nr').value = d.versicherungsnummer||'';
+    document.getElementById('n-kontakt-name').value = d.notfallkontakt_name||'';
+    document.getElementById('n-kontakt-tel').value = d.notfallkontakt_telefon||'';
+    document.getElementById('n-kontakt-bez').value = d.notfallkontakt_beziehung||'';
+    document.getElementById('n-blut').value = d.blutgruppe||'';
+    document.getElementById('n-allergien').value = d.allergien||'';
+    document.getElementById('n-unvertr').value = d.unvertraeglichkeiten||'';
+    document.getElementById('n-chronisch').value = d.chronische_erkrankungen||'';
+    document.getElementById('n-sonstiges').value = d.sonstiges||'';
+}
+
+async function saveNotfall() {
+    try {
+        await api(`/notfallinfo/api/save/${KIND_ID}`, {method:'POST', body:{
+            kinderarzt_name:document.getElementById('n-arzt-name').value,
+            kinderarzt_telefon:document.getElementById('n-arzt-tel').value,
+            kinderarzt_adresse:document.getElementById('n-arzt-adr').value,
+            krankenhaus:document.getElementById('n-kh-name').value,
+            krankenhaus_telefon:document.getElementById('n-kh-tel').value,
+            versicherung:document.getElementById('n-vers').value,
+            versicherungsnummer:document.getElementById('n-vers-nr').value,
+            notfallkontakt_name:document.getElementById('n-kontakt-name').value,
+            notfallkontakt_telefon:document.getElementById('n-kontakt-tel').value,
+            notfallkontakt_beziehung:document.getElementById('n-kontakt-bez').value,
+            blutgruppe:document.getElementById('n-blut').value,
+            allergien:document.getElementById('n-allergien').value,
+            unvertraeglichkeiten:document.getElementById('n-unvertr').value,
+            chronische_erkrankungen:document.getElementById('n-chronisch').value,
+            sonstiges:document.getElementById('n-sonstiges').value,
+        }});
+        showToast('Gespeichert','success');
+    } catch(e){showToast(e.message,'error');}
+}
+
+async function shareInfo() {
+    if (!KIND_ID) return;
+    try {
+        const res = await apiFetch(`/notfallinfo/api/share-token/${KIND_ID}`, {method:'POST'});
+        if (res.url) {
+            navigator.clipboard.writeText(res.url).then(() => showToast('Link kopiert!','success'));
+        }
+    } catch(e) {
+        showToast(e.message || 'Fehler beim Erstellen des Share-Links', 'error');
+    }
+}
+
+loadData();
+</script>
+{% endblock %}

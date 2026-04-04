@@ -1,0 +1,135 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-header">
+    <h1><svg class="icon"><use href="#icon-bottle"/></svg> Milchvorrat</h1>
+    <button class="btn" onclick="openModal('modal-milch')"><svg class="icon"><use href="#icon-plus"/></svg> Eintrag</button>
+</div>
+
+<!-- Bestandsübersicht -->
+<div class="stat-grid mb-2" id="bestand-cards"></div>
+
+<div class="tab-bar">
+    <button class="tab-btn active" onclick="showMTab('verlauf',this)">Verlauf</button>
+    <button class="tab-btn" onclick="showMTab('vorrat',this)">Aktueller Vorrat</button>
+</div>
+
+<div id="mtab-verlauf" class="tab-content active"><div id="verlauf-list" class="timeline"></div></div>
+<div id="mtab-vorrat" class="tab-content"><div id="vorrat-detail"></div></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-milch">
+    <div class="modal-content modal-sm">
+        <div class="modal-header"><h2 id="mv-modal-title">Milchvorrat</h2><button class="modal-close" onclick="closeModal('modal-milch')">&times;</button></div>
+        <div class="modal-body">
+            <input type="hidden" id="mv-id">
+            <div class="form-group"><label>Typ</label>
+                <select class="form-control" id="mv-typ" onchange="toggleMVFelder()">
+                    <option value="eingelagert">Eingelagert (abgepumpt)</option>
+                    <option value="verbraucht">Verbraucht (verfüttert)</option>
+                    <option value="entsorgt">Entsorgt (abgelaufen)</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Menge (ml)</label><input type="number" class="form-control" id="mv-menge" step="5" placeholder="z.B. 120"></div>
+                <div class="form-group" id="mv-lagerort-group"><label>Lagerort</label>
+                    <select class="form-control" id="mv-lagerort">
+                        <option value="kuehlschrank">Kühlschrank (3 Tage)</option>
+                        <option value="tiefkuehl">Tiefkühler (6 Monate)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" id="mv-flasche-group"><label>Flasche/Behälter Nr.</label><input type="text" class="form-control" id="mv-flasche" placeholder="z.B. #1, #2"></div>
+            <div class="form-group"><label>Notiz</label><textarea class="form-control" id="mv-notiz" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modal-milch')">Abbrechen</button><button class="btn btn-primary" onclick="saveMV()">Speichern</button></div>
+    </div>
+</div>
+
+<script>
+function showMTab(id,btn) { document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById('mtab-'+id).classList.add('active'); btn.classList.add('active'); }
+
+function toggleMVFelder() {
+    const typ = document.getElementById('mv-typ').value;
+    document.getElementById('mv-lagerort-group').style.display = typ === 'eingelagert' ? '' : 'none';
+    document.getElementById('mv-flasche-group').style.display = typ === 'eingelagert' ? '' : 'none';
+}
+
+async function loadData() {
+    if (!KIND_ID) return;
+
+    // Bestand
+    const b = await api(`/milchvorrat/api/bestand/${KIND_ID}`);
+    document.getElementById('bestand-cards').innerHTML = `
+        <div class="stat-card"><div class="stat-card-value">${b.bestand_ml}</div><div class="stat-card-label">ml Vorrat</div></div>
+        <div class="stat-card"><div class="stat-card-value" style="color:var(--info)">${b.kuehlschrank_ml}</div><div class="stat-card-label">ml Kühlschrank</div></div>
+        <div class="stat-card"><div class="stat-card-value" style="color:var(--accent)">${b.tiefkuehl_ml}</div><div class="stat-card-label">ml Tiefkühler</div></div>
+        ${b.verfallen_ml > 0 ? `<div class="stat-card"><div class="stat-card-value" style="color:var(--danger)">${b.verfallen_ml}</div><div class="stat-card-label">ml Verfallen!</div></div>` : ''}
+    `;
+
+    // Verlauf
+    const data = await api(`/milchvorrat/api/list/${KIND_ID}`);
+    const c = document.getElementById('verlauf-list');
+    if (!data.length) { c.innerHTML = '<p class="empty-text">Noch keine Einträge</p>'; return; }
+    const typLabel = {eingelagert:'Eingelagert', verbraucht:'Verbraucht', entsorgt:'Entsorgt'};
+    const typColor = {eingelagert:'var(--success)', verbraucht:'var(--info)', entsorgt:'var(--danger)'};
+    window._milchvorratDaten = data;
+    c.innerHTML = data.map(e => `<div class="timeline-item" style="border-left:3px solid ${typColor[e.typ]};">
+        <div class="timeline-time">${formatDateTime(e.datum)}</div>
+        <div class="timeline-content">
+            <div class="timeline-type">${typLabel[e.typ] || esc(e.typ)} - ${e.menge_ml} ml</div>
+            <div class="timeline-detail">
+                ${e.lagerort === 'kuehlschrank' ? 'Kühlschrank' : e.lagerort === 'tiefkuehl' ? 'Tiefkühler' : ''}
+                ${e.flasche_nr ? ' | Flasche ' + esc(e.flasche_nr) : ''}
+                ${e.verfallsdatum ? ' | Verfällt: ' + formatDate(e.verfallsdatum) : ''}
+            </div>
+            ${e.notiz ? `<div class="timeline-detail">${esc(e.notiz)}</div>` : ''}
+        </div>
+        <div class="timeline-actions">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="editMV(${e.id})"><svg class="icon"><use href="#icon-edit"/></svg></button>
+            <button class="btn btn-outline btn-sm btn-icon" onclick="delMV(${e.id})"><svg class="icon"><use href="#icon-trash"/></svg></button>
+        </div>
+    </div>`).join('');
+}
+
+function editMV(id) {
+    const e = window._milchvorratDaten.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('mv-id').value = e.id;
+    document.getElementById('mv-modal-title').textContent = 'Eintrag bearbeiten';
+    document.getElementById('mv-typ').value = e.typ || '';
+    document.getElementById('mv-menge').value = e.menge_ml || '';
+    document.getElementById('mv-lagerort').value = e.lagerort || 'kuehlschrank';
+    document.getElementById('mv-flasche').value = e.flasche_nr || '';
+    document.getElementById('mv-notiz').value = e.notiz || '';
+    toggleMVFelder();
+    openModal('modal-milch');
+}
+
+async function saveMV() {
+    const id = document.getElementById('mv-id').value;
+    const menge = parseFloat(document.getElementById('mv-menge').value);
+    if (!menge || menge <= 0) { showToast('Menge eingeben', 'error'); return; }
+    const body = {
+        kind_id: KIND_ID, typ: document.getElementById('mv-typ').value,
+        menge_ml: menge, lagerort: document.getElementById('mv-lagerort').value,
+        flasche_nr: document.getElementById('mv-flasche').value || null,
+        notiz: document.getElementById('mv-notiz').value || null,
+    };
+    try {
+        if (id) { await api(`/milchvorrat/api/update/${id}`, {method:'PUT', body}); }
+        else { await api('/milchvorrat/api/create', {method:'POST', body}); }
+        document.getElementById('mv-id').value = '';
+        document.getElementById('mv-modal-title').textContent = 'Milchvorrat';
+        closeModal('modal-milch'); showToast('Gespeichert', 'success'); loadData();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function delMV(id) {
+    if (!await confirm('Eintrag löschen?', {danger:true})) return;
+    await api(`/milchvorrat/api/delete/${id}`, {method:'DELETE'});
+    showToast('Gelöscht', 'success'); loadData();
+}
+
+loadData();
+</script>
+{% endblock %}

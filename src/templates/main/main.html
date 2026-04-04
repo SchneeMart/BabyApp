@@ -1,0 +1,290 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="card" style="border-left:none; text-align:left; max-width:none;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:0.5rem;">
+        <h1 style="margin:0;" id="dashboard-greeting">Willkommen, <strong>{{ current_user.username }}</strong></h1>
+        <span class="text-muted text-sm" id="dashboard-date"></span>
+    </div>
+    <script>
+    (function() {
+        const h = new Date().getHours();
+        let g;
+        if (h >= 5 && h < 10) g = 'Guten Morgen';
+        else if (h >= 10 && h < 12) g = 'Schönen Vormittag';
+        else if (h >= 12 && h < 14) g = 'Mahlzeit';
+        else if (h >= 14 && h < 17) g = 'Schönen Nachmittag';
+        else if (h >= 17 && h < 22) g = 'Guten Abend';
+        else g = 'Gute Nacht';
+        const greetEl = document.getElementById('dashboard-greeting');
+        greetEl.innerHTML = '';
+        greetEl.appendChild(document.createTextNode(g + ', '));
+        const strong = document.createElement('strong');
+        strong.textContent = {{ current_user.username|tojson }};
+        greetEl.appendChild(strong);
+        document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('de-AT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    })();
+    </script>
+
+    {% if not kind %}
+    <div class="mt-2" style="background:var(--primary-5); border:2px dashed var(--primary-30); border-radius:12px; padding:2rem; text-align:center;">
+        <p style="font-size:1.1rem; margin-bottom:1rem;">Noch kein Kind angelegt!</p>
+        <a href="{{ url_for('einstellungen.index') }}" class="btn btn-primary btn-lg">Kind hinzufügen</a>
+    </div>
+    {% else %}
+    <p class="text-muted" style="margin:0.25rem 0 0;">
+        {{ kind.name }} - {{ kind.alter_text }}
+    </p>
+
+    <!-- Quick Actions -->
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:1rem;" class="animate-in">
+        <button class="quick-action" onclick="quickStillen()">
+            <div class="qa-icon" style="background:var(--primary-5); color:var(--primary);">
+                <svg class="icon"><use href="#icon-bottle"/></svg>
+            </div>
+            Füttern
+        </button>
+        <button class="quick-action" onclick="quickSchlaf()">
+            <div class="qa-icon" style="background:#e5ebe3; color:#4a6342;">
+                <svg class="icon"><use href="#icon-moon"/></svg>
+            </div>
+            Schlaf
+        </button>
+        <button class="quick-action" onclick="quickWindel('nass')">
+            <div class="qa-icon" style="background:#dde8ec; color:#5b7f8e;">
+                <svg class="icon"><use href="#icon-droplet"/></svg>
+            </div>
+            Nass
+        </button>
+        <button class="quick-action" onclick="quickWindel('stuhl')">
+            <div class="qa-icon" style="background:#f5eed8; color:#c49a3c;">
+                <svg class="icon"><use href="#icon-droplet"/></svg>
+            </div>
+            Stuhl
+        </button>
+        <button class="quick-action" onclick="quickWindel('beides')">
+            <div class="qa-icon" style="background:#f0e6df; color:#8b6e4e;">
+                <svg class="icon"><use href="#icon-droplet"/></svg>
+            </div>
+            Beides
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+{% if kind %}
+<!-- Aktiver Timer (nur einer gleichzeitig) -->
+{% if stats.timer_laeuft %}
+<div class="timer-card mt-2" id="active-timer-card">
+    {% if stats.aktive_fuetterung %}
+    <div class="timer-label">Fütterung läuft{% if stats.aktive_fuetterung.typ %} ({{ stats.aktive_fuetterung.typ }}){% endif %}{% if stats.aktive_fuetterung.seite %} - {{ stats.aktive_fuetterung.seite }}{% endif %}</div>
+    <div class="timer-display" id="active-timer">00:00</div>
+    <div class="timer-actions">
+        <button class="timer-btn timer-btn-stop" onclick="stopFuetterung({{ stats.aktive_fuetterung.id }})">Stopp</button>
+    </div>
+    <script>BabyTimer.start('active', '{{ stats.aktive_fuetterung.beginn.isoformat() }}Z', document.getElementById('active-timer'));</script>
+    {% elif stats.aktiver_schlaf %}
+    <div class="timer-label">{{ stats.aktiver_schlaf.typ|default('Schlaf') }} läuft{% if stats.aktiver_schlaf.ort %} ({{ stats.aktiver_schlaf.ort }}){% endif %}</div>
+    <div class="timer-display" id="active-timer">00:00</div>
+    <div class="timer-actions">
+        <button class="timer-btn timer-btn-stop" onclick="stopSchlaf({{ stats.aktiver_schlaf.id }})">Aufgewacht</button>
+    </div>
+    <script>BabyTimer.start('active', '{{ stats.aktiver_schlaf.beginn.isoformat() }}Z', document.getElementById('active-timer'));</script>
+    {% elif stats.aktive_aktivitaet %}
+    <div class="timer-label">{{ stats.aktive_aktivitaet.typ.name if stats.aktive_aktivitaet.typ else 'Aktivität' }} läuft</div>
+    <div class="timer-display" id="active-timer">00:00</div>
+    <div class="timer-actions">
+        <button class="timer-btn timer-btn-stop" onclick="stopAktivitaet({{ stats.aktive_aktivitaet.id }})">Beenden</button>
+    </div>
+    <script>BabyTimer.start('active', '{{ stats.aktive_aktivitaet.beginn.isoformat() }}Z', document.getElementById('active-timer'));</script>
+    {% endif %}
+</div>
+<p class="text-center text-sm text-muted mt-1">Nur ein Timer gleichzeitig aktiv. Beende den laufenden Timer um einen neuen zu starten.</p>
+{% endif %}
+
+<!-- Tagesstatistik -->
+<div class="stat-grid mt-2 animate-in">
+    <div class="stat-card">
+        <div class="stat-card-value">{{ stats.fuetterungen_heute }}</div>
+        <div class="stat-card-label">Fütterungen</div>
+        {% if stats.seit_letzter_fuetterung is not none %}
+        <div class="stat-card-sub">vor {% if stats.seit_letzter_fuetterung >= 60 %}{{ stats.seit_letzter_fuetterung // 60 }}h {{ stats.seit_letzter_fuetterung % 60 }}min{% else %}{{ stats.seit_letzter_fuetterung }} Min.{% endif %}</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value">{{ stats.schlaf_heute }}</div>
+        <div class="stat-card-label">Nickerchen</div>
+        {% if stats.seit_letztem_schlaf is not none %}
+        <div class="stat-card-sub">Wach seit {% if stats.seit_letztem_schlaf >= 60 %}{{ stats.seit_letztem_schlaf // 60 }}h {{ stats.seit_letztem_schlaf % 60 }}min{% else %}{{ stats.seit_letztem_schlaf }} Min.{% endif %}</div>
+        {% endif %}
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value">{{ stats.windeln_heute }}</div>
+        <div class="stat-card-label">Windeln</div>
+    </div>
+</div>
+
+<!-- Modul-Kacheln -->
+<div class="module-tiles animate-in mt-2">
+    <a href="{{ url_for('fuetterung.index') }}" class="module-tile">
+        <div class="module-tile-icon"><svg class="icon"><use href="#icon-bottle"/></svg></div>
+        <div class="module-tile-title">Fütterung</div>
+        <div class="module-tile-desc">Stillen, Flasche, Beikost</div>
+    </a>
+    <a href="{{ url_for('schlaf.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#e5ebe3; color:#4a6342;"><svg class="icon"><use href="#icon-moon"/></svg></div>
+        <div class="module-tile-title">Schlaf</div>
+        <div class="module-tile-desc">Timer & Vorhersagen</div>
+    </a>
+    <a href="{{ url_for('windeln.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#dde8ec; color:#5b7f8e;"><svg class="icon"><use href="#icon-droplet"/></svg></div>
+        <div class="module-tile-title">Windeln</div>
+        <div class="module-tile-desc">Schnellerfassung</div>
+    </a>
+    <a href="{{ url_for('wachstum.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#e8efe5; color:#6b8e5a;"><svg class="icon"><use href="#icon-trending-up"/></svg></div>
+        <div class="module-tile-title">Wachstum</div>
+        <div class="module-tile-desc">Gewicht & Größe</div>
+    </a>
+    <a href="{{ url_for('gesundheit.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#f5e0dc; color:#b55b4a;"><svg class="icon"><use href="#icon-thermometer"/></svg></div>
+        <div class="module-tile-title">Gesundheit</div>
+        <div class="module-tile-desc">Temperatur & Symptome</div>
+    </a>
+    <a href="{{ url_for('zahnung.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#f0e6df; color:#8b6e4e;"><svg class="icon"><use href="#icon-tooth"/></svg></div>
+        <div class="module-tile-title">Zahnung</div>
+        <div class="module-tile-desc">Zahndiagramm</div>
+    </a>
+    <a href="{{ url_for('meilensteine.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#ebe5e0; color:#7a6555;"><svg class="icon"><use href="#icon-flag"/></svg></div>
+        <div class="module-tile-title">Meilensteine</div>
+        <div class="module-tile-desc">Entwicklung</div>
+    </a>
+    <a href="{{ url_for('aktivitaeten.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#e0ebe8; color:#5a7e6e;"><svg class="icon"><use href="#icon-activity"/></svg></div>
+        <div class="module-tile-title">Aktivitäten</div>
+        <div class="module-tile-desc">Bauchlage, Spielzeit</div>
+    </a>
+    <a href="{{ url_for('beikost.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#e8efe5; color:#6b8e5a;"><svg class="icon"><use href="#icon-apple"/></svg></div>
+        <div class="module-tile-title">Beikost</div>
+        <div class="module-tile-desc">Lebensmittel & Allergien</div>
+    </a>
+    <a href="{{ url_for('tagebuch.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#ebe5e0; color:#8b6e4e;"><svg class="icon"><use href="#icon-book"/></svg></div>
+        <div class="module-tile-title">Tagebuch</div>
+        <div class="module-tile-desc">Fotos & Notizen</div>
+    </a>
+    <a href="{{ url_for('routinen.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#e5ebe3; color:#5d7a54;"><svg class="icon"><use href="#icon-clipboard"/></svg></div>
+        <div class="module-tile-title">Routinen</div>
+        <div class="module-tile-desc">Tagesablauf</div>
+    </a>
+    <a href="{{ url_for('statistiken.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#dde8ec; color:#5b7f8e;"><svg class="icon"><use href="#icon-bar-chart"/></svg></div>
+        <div class="module-tile-title">Statistiken</div>
+        <div class="module-tile-desc">Trends & Berichte</div>
+    </a>
+    <a href="{{ url_for('milchvorrat.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#e5ebe3; color:#5d7a54;"><svg class="icon"><use href="#icon-bottle"/></svg></div>
+        <div class="module-tile-title">Milchvorrat</div>
+        <div class="module-tile-desc">Abgepumpte Milch</div>
+    </a>
+    <a href="{{ url_for('mukipass.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#ebe5e0; color:#8b6e4e;"><svg class="icon"><use href="#icon-clipboard"/></svg></div>
+        <div class="module-tile-title">{% if kind and kind.land == 'DE' %}U-Heft{% else %}MuKi-Pass{% endif %}</div>
+        <div class="module-tile-desc">Untersuchungen & Impfplan</div>
+    </a>
+    <a href="{{ url_for('notfallinfo.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#f5e0dc; color:#b55b4a;"><svg class="icon"><use href="#icon-shield"/></svg></div>
+        <div class="module-tile-title">Notfallinfo</div>
+        <div class="module-tile-desc">Arzt & Kontakte</div>
+    </a>
+    <a href="{{ url_for('export.index') }}" class="module-tile">
+        <div class="module-tile-icon" style="background:#dde8ec; color:#5b7f8e;"><svg class="icon"><use href="#icon-download"/></svg></div>
+        <div class="module-tile-title">Export</div>
+        <div class="module-tile-desc">Berichte & CSV</div>
+    </a>
+    <a href="{{ url_for('einstellungen.index') }}" class="module-tile module-tile-settings">
+        <div class="module-tile-icon" style="background:#ebe5e0; color:#8b6e4e;"><svg class="icon"><use href="#icon-settings"/></svg></div>
+        <div class="module-tile-title">Einstellungen</div>
+        <div class="module-tile-desc">Kinder & Profil</div>
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// KIND_ID kommt aus layout.html (global)
+
+function zeitSeit(min) {
+    if (min < 60) return 'vor ' + min + ' Min.';
+    return 'vor ' + Math.floor(min/60) + 'h ' + (min%60) + 'min';
+}
+
+async function quickStillen() {
+    if (!KIND_ID) return;
+    try {
+        await api('/fuetterung/api/create', {
+            method: 'POST',
+            body: { kind_id: KIND_ID, typ: 'stillen', beginn: new Date().toISOString() }
+        });
+        showToast('Fütterung gestartet', 'success');
+        setTimeout(() => location.reload(), 500);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function quickSchlaf() {
+    if (!KIND_ID) return;
+    try {
+        await api('/schlaf/api/start', {
+            method: 'POST',
+            body: { kind_id: KIND_ID, typ: 'nickerchen' }
+        });
+        showToast('Schlaf gestartet', 'success');
+        setTimeout(() => location.reload(), 500);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function quickWindel(typ) {
+    if (!KIND_ID) return;
+    try {
+        await api('/windeln/api/create', {
+            method: 'POST',
+            body: { kind_id: KIND_ID, typ: typ }
+        });
+        showToast('Windel erfasst', 'success');
+        setTimeout(() => location.reload(), 500);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function stopFuetterung(id) {
+    try {
+        const r = await api(`/fuetterung/api/stop/${id}`, { method: 'POST' });
+        showToast(`Fütterung beendet (${r.dauer_minuten} Min.)`, 'success');
+        BabyTimer.stop('active');
+        setTimeout(() => location.reload(), 800);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function stopAktivitaet(id) {
+    try {
+        const r = await api(`/aktivitaeten/api/stop/${id}`, { method: 'POST' });
+        showToast(`Aktivität beendet (${formatDauer(r.dauer_minuten)})`, 'success');
+        BabyTimer.stop('active');
+        setTimeout(() => location.reload(), 800);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function stopSchlaf(id) {
+    try {
+        const r = await api(`/schlaf/api/stop/${id}`, { method: 'POST' });
+        showToast(`Schlaf beendet (${r.dauer_minuten} Min.)`, 'success');
+        BabyTimer.stop('active');
+        setTimeout(() => location.reload(), 800);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+</script>
+{% endblock %}

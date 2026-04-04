@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>{{ module_name | default('Login') }} - {{ site_settings.site_name }}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <!-- PWA -->
+    <meta name="theme-color" content="{{ site_settings.color_nav_bg }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ site_settings.site_name }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-192.png') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/buttons.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cards.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tables.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modals.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}?v={{ cache_buster }}">
+
+    <style>
+        :root {
+            --primary: {{ site_settings.color_primary }};
+            --primary-hover: {{ site_settings.color_primary_hover }};
+            --dark-bg: {{ site_settings.color_nav_bg }};
+            --page-bg: {{ site_settings.color_page_bg }};
+        }
+        .icon, .nav-icon, .header-module-icon { display: inline-block; vertical-align: middle; fill: none; stroke: currentColor; }
+        .icon { width: 1.1em; height: 1.1em; }
+        .nav-icon { width: 20px; height: 20px; flex-shrink: 0; }
+        .icon-sm { width: 0.85em; height: 0.85em; }
+        .icon-lg { width: 1.5em; height: 1.5em; }
+        .icon-xl { width: 2em; height: 2em; }
+        .module-tile-icon .icon { width: 24px; height: 24px; }
+    </style>
+
+    <script src="{{ url_for('static', filename='js/global-icons.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/global-modals.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/global-camera.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ cache_buster }}"></script>
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% include 'partials/_icon_sprites.html' %}
+
+    {% if current_user.is_authenticated %}
+    <div id="nav-overlay" class="nav-overlay"></div>
+    <nav id="side-nav" class="side-nav">
+        <a href="{{ url_for('main.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-home"/></svg><span class="nav-button-text">Dashboard</span>
+        </a>
+        <a href="{{ url_for('fuetterung.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-bottle"/></svg><span class="nav-button-text">Fütterung</span>
+        </a>
+        <a href="{{ url_for('schlaf.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-moon"/></svg><span class="nav-button-text">Schlaf</span>
+        </a>
+        <a href="{{ url_for('windeln.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-droplet"/></svg><span class="nav-button-text">Windeln</span>
+        </a>
+        <a href="{{ url_for('wachstum.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-trending-up"/></svg><span class="nav-button-text">Wachstum</span>
+        </a>
+        <a href="{{ url_for('gesundheit.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-thermometer"/></svg><span class="nav-button-text">Gesundheit</span>
+        </a>
+        <a href="{{ url_for('zahnung.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-tooth"/></svg><span class="nav-button-text">Zahnung</span>
+        </a>
+        <a href="{{ url_for('meilensteine.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-flag"/></svg><span class="nav-button-text">Meilensteine</span>
+        </a>
+        <a href="{{ url_for('aktivitaeten.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-activity"/></svg><span class="nav-button-text">Aktivitäten</span>
+        </a>
+        <a href="{{ url_for('beikost.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-apple"/></svg><span class="nav-button-text">Beikost</span>
+        </a>
+        <a href="{{ url_for('tagebuch.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-book"/></svg><span class="nav-button-text">Tagebuch</span>
+        </a>
+        <a href="{{ url_for('routinen.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-clipboard"/></svg><span class="nav-button-text">Routinen</span>
+        </a>
+        <a href="{{ url_for('statistiken.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-bar-chart"/></svg><span class="nav-button-text">Statistiken</span>
+        </a>
+        <a href="{{ url_for('milchvorrat.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-bottle"/></svg><span class="nav-button-text">Milchvorrat</span>
+        </a>
+        <a href="{{ url_for('mukipass.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-clipboard"/></svg><span class="nav-button-text">{% if kind and kind.land == 'DE' %}U-Heft{% else %}MuKi-Pass{% endif %}</span>
+        </a>
+        <a href="{{ url_for('notfallinfo.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-shield"/></svg><span class="nav-button-text">Notfallinfo</span>
+        </a>
+        <a href="{{ url_for('export.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-download"/></svg><span class="nav-button-text">Export</span>
+        </a>
+        <div class="nav-spacer"></div>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('benutzerverwaltung.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-users"/></svg><span class="nav-button-text">Benutzer</span>
+        </a>
+        {% endif %}
+        {% if current_user.is_admin or current_user.is_elternteil %}
+        <a href="{{ url_for('einstellungen.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-settings"/></svg><span class="nav-button-text">Einstellungen</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('profil.index') }}" class="nav-button">
+            <svg class="nav-icon"><use href="#icon-users"/></svg><span class="nav-button-text">{{ current_user.username }}</span>
+        </a>
+        <form method="POST" action="{{ url_for('auth.logout') }}" style="margin:0;padding:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="nav-button" style="width:100%;border:none;background:none;cursor:pointer;text-align:left;">
+                <svg class="nav-icon"><use href="#icon-log-out"/></svg><span class="nav-button-text">Abmelden</span>
+            </button>
+        </form>
+    </nav>
+    {% endif %}
+
+    <div class="main-wrapper">
+        {% if current_user.is_authenticated %}
+        <header class="header">
+            <div class="menu-icon" id="menu-icon">
+                <span></span><span></span><span></span>
+            </div>
+            <div class="header-title">
+                <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="Logo" class="header-logo">
+                <span class="app-name">{{ site_settings.site_name }}</span>
+                <span class="module-name">{{ module_name }}</span>
+            </div>
+            {% if current_user.is_authenticated and kinder is defined and kinder %}
+            <div class="kind-selector">
+                <div class="kind-dropdown" id="kind-dropdown">
+                    <button class="kind-dropdown-btn" onclick="document.getElementById('kind-dropdown').classList.toggle('open')">
+                        <span class="kind-dropdown-name">{{ kind.name if kind else 'Kind wählen' }}</span>
+                        <svg style="width:12px;height:12px;margin-left:4px;opacity:0.7;" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5l3 3 3-3"/></svg>
+                    </button>
+                    <div class="kind-dropdown-menu">
+                        {% for k in kinder %}
+                        <a class="kind-dropdown-item {% if kind and kind.id == k.id %}active{% endif %}"
+                           onclick="setActiveKind({{ k.id }})">
+                            <span class="kind-dropdown-avatar">{{ k.name[0] }}</span>
+                            <div>
+                                <div class="kind-dropdown-item-name">{{ k.name }}</div>
+                                <div class="kind-dropdown-item-info">{{ k.alter_text }}</div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                        <a class="kind-dropdown-item" href="{{ url_for('einstellungen.index') }}" style="border-top:1px solid rgba(255,255,255,0.1);margin-top:4px;padding-top:8px;">
+                            <svg style="width:16px;height:16px;flex-shrink:0;opacity:0.6;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <div><div class="kind-dropdown-item-name">Kind hinzufügen</div></div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            <button class="header-action-btn" onclick="toggleDarkMode()" title="Nachtmodus">
+                <svg class="icon" style="width:18px;height:18px;"><use href="#icon-moon"/></svg>
+            </button>
+        </header>
+        {% endif %}
+
+        {% if current_user.is_authenticated %}
+        <script>
+            window.KIND_ID = {{ kind.id if kind else 'null' }};
+            window.KIND_NAME = {{ kind.name|tojson if kind else 'null' }};
+            window.KANN_SCHREIBEN = {{ 'true' if current_user.kann_schreiben else 'false' }};
+            window.USER_ROLLE = {{ current_user.role|tojson }};
+            {% if not current_user.kann_schreiben %}
+            document.documentElement.classList.add('readonly-mode');
+            {% endif %}
+        </script>
+        {% endif %}
+
+        <div class="content-area">
+            <div class="content-inner">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+
+        {% if current_user.is_authenticated %}
+        <footer class="footer">
+            BabyApp v{{ app_version.version }}
+        </footer>
+        {% endif %}
+    </div>
+
+    <div id="toast-container"></div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
