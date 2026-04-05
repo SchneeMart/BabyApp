@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, jsonify, request
 from flask_login import login_required
 from src.extensions import db
 from src.models import Kind, Fuetterung, Schlaf, Windel, Wachstum
+from src.utils import check_kind_zugriff
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 
@@ -17,6 +18,9 @@ def index():
 @statistiken_bp.route('/api/tagesuebersicht/<int:kind_id>')
 @login_required
 def api_tagesuebersicht(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     datum_str = request.args.get('datum', date.today().isoformat())
     try:
         datum = date.fromisoformat(datum_str)
@@ -67,6 +71,9 @@ def api_tagesuebersicht(kind_id):
 @statistiken_bp.route('/api/wochenverlauf/<int:kind_id>')
 @login_required
 def api_wochenverlauf(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     heute = date.today()
     tage = []
     for i in range(6, -1, -1):

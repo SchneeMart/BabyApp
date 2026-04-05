@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, jsonify, request, send_file
+from werkzeug.utils import secure_filename
 from flask_login import login_required, current_user
 from src.extensions import db
 from src.models import Kind, Gesundheit, GesundheitFoto, Impfung, Medikament, Arztbesuch
@@ -19,6 +20,9 @@ def index():
 @gesundheit_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     eintraege = Gesundheit.query.filter_by(kind_id=kind_id).order_by(Gesundheit.datum.desc()).limit(50).all()
     return jsonify([{
         'id': e.id, 'datum': e.datum.isoformat() + 'Z', 'typ': e.typ,
@@ -133,7 +137,7 @@ def api_foto_get(foto_id):
         if zugriff:
             return zugriff
     return send_file(BytesIO(foto.daten), mimetype=foto.mime_type,
-                     download_name=foto.dateiname or f'foto_{foto_id}.jpg')
+                     download_name=secure_filename(foto.dateiname or f'foto_{foto_id}.jpg'))
 
 
 @gesundheit_bp.route('/api/foto/<int:foto_id>', methods=['DELETE'])
@@ -169,6 +173,9 @@ def api_delete(id):
 @gesundheit_bp.route('/api/impfungen/<int:kind_id>')
 @login_required
 def api_impfungen(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     eintraege = Impfung.query.filter_by(kind_id=kind_id).order_by(Impfung.datum.desc()).all()
     return jsonify([{
         'id': e.id, 'datum': e.datum.isoformat(), 'name': e.name,
@@ -214,6 +221,9 @@ def api_impfung_delete(id):
 @gesundheit_bp.route('/api/medikamente/<int:kind_id>')
 @login_required
 def api_medikamente(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     eintraege = Medikament.query.filter_by(kind_id=kind_id).order_by(Medikament.beginn.desc()).all()
     return jsonify([{
         'id': e.id, 'name': e.name, 'dosis': e.dosis, 'einheit': e.einheit,
@@ -259,6 +269,9 @@ def api_medikament_delete(id):
 @gesundheit_bp.route('/api/arztbesuche/<int:kind_id>')
 @login_required
 def api_arztbesuche(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     eintraege = Arztbesuch.query.filter_by(kind_id=kind_id).order_by(Arztbesuch.datum.desc()).all()
     return jsonify([{
         'id': e.id, 'datum': e.datum.isoformat() + 'Z', 'arzt': e.arzt,

@@ -17,6 +17,9 @@ def index():
 @beikost_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     eintraege = Beikost.query.filter_by(kind_id=kind_id).order_by(Beikost.datum.desc()).limit(100).all()
     return jsonify([{
         'id': e.id, 'datum': e.datum.isoformat(), 'lebensmittel': e.lebensmittel,
@@ -82,6 +85,9 @@ def api_delete(id):
 @login_required
 def api_lebensmittel(kind_id):
     """Alle eingeführten Lebensmittel mit Status."""
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     alle = Beikost.query.filter_by(kind_id=kind_id).all()
     lm_map = {}
     for e in alle:

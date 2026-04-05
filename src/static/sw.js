@@ -64,14 +64,15 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Statische Dateien: Cache-first, dann Netzwerk
+    // Statische Dateien: Cache-first (ohne Query-Parameter), dann Netzwerk
     if (url.pathname.startsWith('/static/')) {
+        const cacheUrl = new Request(url.origin + url.pathname);
         event.respondWith(
-            caches.match(event.request).then(cached => {
+            caches.match(cacheUrl).then(cached => {
                 return cached || fetch(event.request).then(response => {
                     if (response.ok) {
                         const clone = response.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                        caches.open(CACHE_NAME).then(cache => cache.put(cacheUrl, clone));
                     }
                     return response;
                 });

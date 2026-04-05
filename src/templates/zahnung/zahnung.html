@@ -42,28 +42,28 @@ let selectedZahn = null;
 
 const ZAEHNE = {
     oben: [
-        {nr:5, kurz:'5er', name:'2. Backenzahn rechts', typ:'backenzahn'},
-        {nr:4, kurz:'4er', name:'1. Backenzahn rechts', typ:'backenzahn'},
-        {nr:3, kurz:'3er', name:'Eckzahn rechts', typ:'eckzahn'},
-        {nr:2, kurz:'2er', name:'Seitl. Schneidezahn rechts', typ:'schneidezahn'},
-        {nr:1, kurz:'1er', name:'Mittl. Schneidezahn rechts', typ:'schneidezahn'},
-        {nr:6, kurz:'1er', name:'Mittl. Schneidezahn links', typ:'schneidezahn'},
-        {nr:7, kurz:'2er', name:'Seitl. Schneidezahn links', typ:'schneidezahn'},
-        {nr:8, kurz:'3er', name:'Eckzahn links', typ:'eckzahn'},
-        {nr:9, kurz:'4er', name:'1. Backenzahn links', typ:'backenzahn'},
-        {nr:10, kurz:'5er', name:'2. Backenzahn links', typ:'backenzahn'},
+        {nr:5, fdi:55, name:'2. Backenzahn rechts', typ:'backenzahn'},
+        {nr:4, fdi:54, name:'1. Backenzahn rechts', typ:'backenzahn'},
+        {nr:3, fdi:53, name:'Eckzahn rechts', typ:'eckzahn'},
+        {nr:2, fdi:52, name:'Seitl. Schneidezahn rechts', typ:'schneidezahn'},
+        {nr:1, fdi:51, name:'Mittl. Schneidezahn rechts', typ:'schneidezahn'},
+        {nr:6, fdi:61, name:'Mittl. Schneidezahn links', typ:'schneidezahn'},
+        {nr:7, fdi:62, name:'Seitl. Schneidezahn links', typ:'schneidezahn'},
+        {nr:8, fdi:63, name:'Eckzahn links', typ:'eckzahn'},
+        {nr:9, fdi:64, name:'1. Backenzahn links', typ:'backenzahn'},
+        {nr:10, fdi:65, name:'2. Backenzahn links', typ:'backenzahn'},
     ],
     unten: [
-        {nr:15, kurz:'5er', name:'2. Backenzahn links', typ:'backenzahn'},
-        {nr:14, kurz:'4er', name:'1. Backenzahn links', typ:'backenzahn'},
-        {nr:13, kurz:'3er', name:'Eckzahn links', typ:'eckzahn'},
-        {nr:12, kurz:'2er', name:'Seitl. Schneidezahn links', typ:'schneidezahn'},
-        {nr:11, kurz:'1er', name:'Mittl. Schneidezahn links', typ:'schneidezahn'},
-        {nr:16, kurz:'1er', name:'Mittl. Schneidezahn rechts', typ:'schneidezahn'},
-        {nr:17, kurz:'2er', name:'Seitl. Schneidezahn rechts', typ:'schneidezahn'},
-        {nr:18, kurz:'3er', name:'Eckzahn rechts', typ:'eckzahn'},
-        {nr:19, kurz:'4er', name:'1. Backenzahn rechts', typ:'backenzahn'},
-        {nr:20, kurz:'5er', name:'2. Backenzahn rechts', typ:'backenzahn'},
+        {nr:20, fdi:85, name:'2. Backenzahn rechts', typ:'backenzahn'},
+        {nr:19, fdi:84, name:'1. Backenzahn rechts', typ:'backenzahn'},
+        {nr:18, fdi:83, name:'Eckzahn rechts', typ:'eckzahn'},
+        {nr:17, fdi:82, name:'Seitl. Schneidezahn rechts', typ:'schneidezahn'},
+        {nr:16, fdi:81, name:'Mittl. Schneidezahn rechts', typ:'schneidezahn'},
+        {nr:11, fdi:71, name:'Mittl. Schneidezahn links', typ:'schneidezahn'},
+        {nr:12, fdi:72, name:'Seitl. Schneidezahn links', typ:'schneidezahn'},
+        {nr:13, fdi:73, name:'Eckzahn links', typ:'eckzahn'},
+        {nr:14, fdi:74, name:'1. Backenzahn links', typ:'backenzahn'},
+        {nr:15, fdi:75, name:'2. Backenzahn links', typ:'backenzahn'},
     ]
 };
 
@@ -106,7 +106,7 @@ function renderDiagramm() {
         const sel = selectedZahn === z.nr;
         html += `<div onclick="selectZahn(${z.nr})" style="cursor:pointer;text-align:center;padding:2px;border-radius:6px;transition:all 0.15s;${sel?'background:var(--primary-10);':''}" title="${z.name}">
             <div style="height:44px;">${zahnSVG(z.typ, hat, sel)}</div>
-            <div style="font-size:0.6rem;color:${hat?'var(--primary)':'#bbb'};font-weight:700;margin-top:1px;">${z.nr}</div>
+            <div style="font-size:0.6rem;color:${hat?'var(--primary)':'#bbb'};font-weight:700;margin-top:1px;">${z.fdi}</div>
         </div>`;
     }
     html += '</div>';
@@ -120,7 +120,7 @@ function renderDiagramm() {
         const hat = !!zahnDaten[z.nr];
         const sel = selectedZahn === z.nr;
         html += `<div onclick="selectZahn(${z.nr})" style="cursor:pointer;text-align:center;padding:2px;border-radius:6px;transition:all 0.15s;${sel?'background:var(--primary-10);':''}" title="${z.name}">
-            <div style="font-size:0.6rem;color:${hat?'var(--primary)':'#bbb'};font-weight:700;margin-bottom:1px;">${z.nr}</div>
+            <div style="font-size:0.6rem;color:${hat?'var(--primary)':'#bbb'};font-weight:700;margin-bottom:1px;">${z.fdi}</div>
             <div style="height:44px;transform:scaleY(-1);">${zahnSVG(z.typ, hat, sel)}</div>
         </div>`;
     }
@@ -138,7 +138,7 @@ function renderListe() {
     const eintraege = Object.values(zahnDaten).sort((a, b) => {
         if (!a.durchbruch_datum) return 1;
         if (!b.durchbruch_datum) return -1;
-        return a.durchbruch_datum.localeCompare(b.durchbruch_datum);
+        return b.durchbruch_datum.localeCompare(a.durchbruch_datum);
     });
     if (!eintraege.length) {
         liste.innerHTML = '<p class="empty-text">Noch keine Zähne erfasst. Klicke auf einen Zahn im Diagramm.</p>';
@@ -148,7 +148,7 @@ function renderListe() {
         <div class="timeline-time">${z.durchbruch_datum ? formatDate(z.durchbruch_datum) : '-'}</div>
         <div class="timeline-content">
             <div class="timeline-type">${z.name}</div>
-            <div class="timeline-detail">Zahn #${z.zahn_nr}${z.ausfall_datum ? ' | Ausgefallen: ' + formatDate(z.ausfall_datum) : ''}</div>
+            <div class="timeline-detail">Zahn ${z.fdi || z.zahn_nr}${z.ausfall_datum ? ' | Ausgefallen: ' + formatDate(z.ausfall_datum) : ''}</div>
             ${z.notiz ? '<div class="timeline-detail">' + z.notiz + '</div>' : ''}
         </div>
         <div class="timeline-actions">
@@ -163,7 +163,7 @@ function selectZahn(nr) {
     const z = allZaehne.find(t => t.nr === nr);
     const detail = document.getElementById('zahn-detail');
     detail.style.display = 'block';
-    const pos = nr <= 10 ? 'Oben' : 'Unten';
+    const pos = ZAEHNE.oben.some(t => t.nr === nr) ? 'Oben' : 'Unten';
     document.getElementById('zahn-detail-name').textContent = `${pos}: ${z ? z.name : 'Zahn #' + nr}`;
     const d = zahnDaten[nr] || {};
     document.getElementById('z-durchbruch').value = d.durchbruch_datum || '';

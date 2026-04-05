@@ -210,6 +210,49 @@ def create_app():
             'kind': kind,
         }
 
+    # CSRF-Fehler als JSON statt HTML zurückgeben
+    from flask_wtf.csrf import CSRFError
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        if '/api/' in flask_request.path:
+            logging.warning(f'CSRF-Fehler auf {flask_request.path}: {e.description}')
+            from flask import jsonify
+            return jsonify({'error': f'CSRF-Token ungültig: {e.description}'}), 400
+        return e.description, 400
+
+    # Unbehandelte Exceptions als JSON für API-Requests
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        if '/api/' in flask_request.path:
+            logging.error(f'Unbehandelte Exception auf {flask_request.method} {flask_request.path}: {type(e).__name__}: {e}', exc_info=True)
+            from flask import jsonify
+            return jsonify({'error': f'Interner Serverfehler: {type(e).__name__}'}), 500
+        raise e
+
+    # API-Request-Logging
+    @app.before_request
+    def log_api_request():
+        from flask_login import current_user
+        from flask import request as req
+        if '/api/' in req.path and current_user.is_authenticated:
+            user_info = f'{current_user.username}(ID:{current_user.id})' if hasattr(current_user, 'username') else f'TokenGast({current_user.id})'
+            body_info = ''
+            if req.method in ('POST', 'PUT') and req.is_json:
+                data = req.get_json(silent=True)
+                if data:
+                    safe_data = {k: v for k, v in data.items() if k not in ('password', 'passwort', 'neu', 'aktuell')}
+                    body_info = f' body={safe_data}'
+            logging.info(f'API {req.method} {req.path} | User: {user_info}{body_info}')
+
+    @app.after_request
+    def log_api_response(response):
+        from flask import request as req
+        if '/api/' in req.path and response.status_code >= 400:
+            body_preview = response.data.decode('utf-8', errors='replace')[:200] if response.data else ''
+            logging.warning(f'API {req.method} {req.path} -> {response.status_code} | {body_preview}')
+        return response
+
     # Globale Sicherheitsprüfungen
     @app.before_request
     def global_security_check():
@@ -232,8 +275,8 @@ def create_app():
             r'/api/settings$',
             r'/api/settings/update$',
             r'/api/passwort$',
-            r'/api/typen$',
-            r'/api/typen/',
+            r'/aktivitaeten/api/typen$',
+            r'/aktivitaeten/api/typen/',
             r'/api/aktiver-timer/',
             r'/profil/api/',
         ]
@@ -255,7 +298,7 @@ def create_app():
         # Bei /api/stop/<id>, /api/update/<id>, /api/delete/<id>, /api/foto/<id>
         # ist die Zahl eine Eintrags-ID -- diese Endpoints prüfen selbst.
         kind_id = None
-        eintrag_id_patterns = r'/api/(?:stop|update|delete|foto|create)/'
+        eintrag_id_patterns = r'/api/(?:[a-z_-]+/)*(?:stop|update|delete|foto|create|check|toggle)/|/api/\d+/foto|/api/kinder/(?:freigabe|token)/\d+'
         if not re.search(eintrag_id_patterns, req.path):
             m = re.search(r'/api/(?:[a-z_-]+/)*(\d+)', req.path)
             if m:
@@ -289,6 +332,7 @@ def create_app():
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['Permissions-Policy'] = 'camera=(self), microphone=()'
         response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:"
         if flask_request.is_secure:
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         # active_kind_id Cookie-Sicherheit verbessern

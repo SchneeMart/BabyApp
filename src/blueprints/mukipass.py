@@ -88,6 +88,9 @@ def index():
 @mukipass_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     kind = db.session.get(Kind, kind_id)
     if not kind:
         return jsonify({'error': 'Kind nicht gefunden'}), 404
@@ -159,6 +162,9 @@ def api_update(id):
 @login_required
 def api_impfplan(kind_id):
     """Impfplan (AT oder DE) mit Soll-Terminen."""
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     kind = db.session.get(Kind, kind_id)
     if not kind:
         return jsonify({'error': 'Kind nicht gefunden'}), 404
@@ -172,7 +178,7 @@ def api_impfplan(kind_id):
     result = []
     for imp in impfplan:
         soll_datum = kind.geburtsdatum + timedelta(weeks=imp['alter_wochen'])
-        erledigt = any(imp['name'].lower() in n for n in geimpft_namen)
+        erledigt = imp['name'].lower() in geimpft_namen
         result.append({
             'name': imp['name'], 'beschreibung': imp['beschreibung'],
             'alter_wochen': imp['alter_wochen'], 'soll_datum': soll_datum.isoformat(),

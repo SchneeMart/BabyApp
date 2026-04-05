@@ -17,6 +17,9 @@ def index():
 @routinen_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     routinen = Routine.query.filter_by(kind_id=kind_id).order_by(Routine.uhrzeit).all()
     heute = date.today()
     result = []

@@ -170,7 +170,9 @@ def api_invite():
         )
         mail.send(msg)
         return jsonify({'ok': True, 'id': user.id, 'mail_sent': True})
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.error(f'Mail-Versand fehlgeschlagen (Einladung): {e}')
         return jsonify({'ok': True, 'id': user.id, 'mail_sent': False, 'invite_url': invite_url})
 
 

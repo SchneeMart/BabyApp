@@ -17,6 +17,9 @@ def index():
 @wachstum_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     eintraege = Wachstum.query.filter_by(kind_id=kind_id).order_by(Wachstum.datum.desc()).all()
     return jsonify([{
         'id': e.id,
@@ -90,6 +93,9 @@ def api_delete(id):
 @login_required
 def api_perzentile(kind_id):
     """WHO-Perzentil-Daten für Wachstumskurven."""
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     kind = db.session.get(Kind, kind_id)
     if not kind:
         return jsonify({'error': 'Kind nicht gefunden'}), 404

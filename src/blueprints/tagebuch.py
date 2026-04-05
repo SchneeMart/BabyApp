@@ -18,6 +18,9 @@ def index():
 @tagebuch_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     seite = request.args.get('seite', 1, type=int)
     pro_seite = 20
     eintraege = Tagebuch.query.filter_by(kind_id=kind_id).order_by(

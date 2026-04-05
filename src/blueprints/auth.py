@@ -37,7 +37,7 @@ def login():
     return render_template('auth/login.html', module_name='Login')
 
 
-@auth_bp.route('/logout', methods=['GET', 'POST'])
+@auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
@@ -97,8 +97,9 @@ def request_reset():
                     button_url=reset_url,
                 )
                 mail.send(msg)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+                logging.error(f'Mail-Versand fehlgeschlagen (Passwort-Reset): {e}')
         flash('Falls ein Account mit dieser E-Mail existiert, wurde ein Link gesendet.', 'info')
     return render_template('auth/reset_password.html', module_name='Passwort zurücksetzen')
 

@@ -1,7 +1,8 @@
+import re
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import login_required, current_user
 from src.extensions import db
-from src.models import Kind, Aktivitaet, AktivitaetTyp
+from src.models import Kind, Aktivitaet, AktivitaetTyp, Fuetterung, Schlaf
 from src.utils import check_kind_zugriff, get_erstellt_von
 from datetime import datetime, date
 
@@ -18,6 +19,9 @@ def index():
 @aktivitaeten_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     datum_str = request.args.get('datum', date.today().isoformat())
     try:
         datum = date.fromisoformat(datum_str)
@@ -50,11 +54,19 @@ def api_list(kind_id):
 @login_required
 def api_start():
     data = request.get_json()
-    zugriff = check_kind_zugriff(data.get('kind_id'))
+    kind_id = data.get('kind_id')
+    zugriff = check_kind_zugriff(kind_id)
     if zugriff:
         return zugriff
+    # Timer-Mutex: nur ein Timer gleichzeitig
+    if Aktivitaet.query.filter(Aktivitaet.kind_id == kind_id, Aktivitaet.ende.is_(None)).first():
+        return jsonify({'error': 'Es läuft bereits eine Aktivität'}), 400
+    if Fuetterung.query.filter(Fuetterung.kind_id == kind_id, Fuetterung.ende.is_(None)).first():
+        return jsonify({'error': 'Es läuft bereits eine Fütterung. Bitte zuerst beenden.'}), 400
+    if Schlaf.query.filter(Schlaf.kind_id == kind_id, Schlaf.ende.is_(None)).first():
+        return jsonify({'error': 'Es läuft bereits ein Schlaf-Timer. Bitte zuerst beenden.'}), 400
     eintrag = Aktivitaet(
-        kind_id=data['kind_id'],
+        kind_id=kind_id,
         typ_id=data['typ_id'],
         beginn=datetime.utcnow(),
         erstellt_von=get_erstellt_von(),
@@ -73,7 +85,7 @@ def api_stop(id):
     if zugriff:
         return zugriff
     e.ende = datetime.utcnow()
-    e.dauer_minuten = int((e.ende - e.beginn).total_seconds() / 60)
+    e.dauer_minuten = max(1, round((e.ende - e.beginn).total_seconds() / 60))
     db.session.commit()
     return jsonify({'ok': True, 'dauer_minuten': e.dauer_minuten})
 
@@ -114,7 +126,7 @@ def api_create():
         beginn=datetime.fromisoformat(data['beginn'].replace('Z', '')) if data.get('beginn') else datetime.utcnow(),
         ende=datetime.fromisoformat(data['ende'].replace('Z', '')) if data.get('ende') else None,
         dauer_minuten=data.get('dauer_minuten'),
-        notiz=data.get('notiz'), erstellt_von=current_user.id,
+        notiz=data.get('notiz'), erstellt_von=get_erstellt_von(),
     )
     db.session.add(e)
     db.session.commit()
@@ -145,8 +157,16 @@ def api_typen():
 @aktivitaeten_bp.route('/api/typen/create', methods=['POST'])
 @login_required
 def api_typ_create():
+    if not current_user.kann_schreiben:
+        return jsonify({'error': 'Keine Schreibberechtigung'}), 403
     data = request.get_json()
-    t = AktivitaetTyp(name=data['name'], icon=data.get('icon', 'star'), farbe=data.get('farbe', '#607D8B'))
+    farbe = data.get('farbe', '#607D8B')
+    if not re.match(r'^#[0-9a-fA-F]{3,8}$', farbe):
+        farbe = '#607D8B'
+    icon = data.get('icon', 'star')
+    if not re.match(r'^[a-zA-Z0-9_-]+$', icon):
+        icon = 'star'
+    t = AktivitaetTyp(name=data['name'], icon=icon, farbe=farbe)
     db.session.add(t)
     db.session.commit()
     return jsonify({'ok': True, 'id': t.id}), 201
@@ -155,6 +175,8 @@ def api_typ_create():
 @aktivitaeten_bp.route('/api/typen/delete/<int:id>', methods=['DELETE'])
 @login_required
 def api_typ_delete(id):
+    if not current_user.kann_schreiben:
+        return jsonify({'error': 'Keine Schreibberechtigung'}), 403
     t = db.session.get(AktivitaetTyp, id)
     if not t: return jsonify({'error': 'Nicht gefunden'}), 404
     if t.ist_standard: return jsonify({'error': 'Standard-Typen können nicht gelöscht werden'}), 400

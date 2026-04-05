@@ -17,6 +17,9 @@ def index():
 @windeln_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     datum_str = request.args.get('datum', date.today().isoformat())
     try:
         datum = date.fromisoformat(datum_str)

@@ -144,7 +144,7 @@ class KindFreigabe(db.Model):
     """Verknüpft Benutzer mit Kindern inkl. Berechtigung."""
     __tablename__ = 'kind_freigaben'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     rolle = db.Column(db.String(20), nullable=False, default='read')  # owner/write/read
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -159,7 +159,7 @@ class KindToken(db.Model):
     """Öffentliche Freigabe-Tokens für Kinder."""
     __tablename__ = 'kind_tokens'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     token = db.Column(db.String(64), nullable=False, unique=True)
     berechtigung = db.Column(db.String(20), nullable=False, default='read')  # read/write
     erstellt_von = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -182,7 +182,7 @@ class FuetterungsTyp(str, enum.Enum):
 class Fuetterung(db.Model):
     __tablename__ = 'fuetterungen'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     typ = db.Column(db.String(20), nullable=False)  # stillen/flasche/abpumpen/beikost
     beginn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     ende = db.Column(db.DateTime, nullable=True)
@@ -208,7 +208,7 @@ class Fuetterung(db.Model):
 class Schlaf(db.Model):
     __tablename__ = 'schlafeintraege'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     beginn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     ende = db.Column(db.DateTime, nullable=True)
     dauer_minuten = db.Column(db.Integer, nullable=True)
@@ -227,7 +227,7 @@ class Schlaf(db.Model):
 class Windel(db.Model):
     __tablename__ = 'windeln'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     zeitpunkt = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     typ = db.Column(db.String(20), nullable=False)  # nass/stuhl/beides/trocken
     farbe = db.Column(db.String(30), nullable=True)
@@ -244,7 +244,7 @@ class Windel(db.Model):
 class Wachstum(db.Model):
     __tablename__ = 'wachstumsdaten'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     datum = db.Column(db.Date, nullable=False, default=date.today)
     gewicht_kg = db.Column(db.Float, nullable=True)
     groesse_cm = db.Column(db.Float, nullable=True)
@@ -261,7 +261,7 @@ class Wachstum(db.Model):
 class Gesundheit(db.Model):
     __tablename__ = 'gesundheitseintraege'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     datum = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     typ = db.Column(db.String(30), nullable=False)  # symptom/temperatur/sonstiges
     temperatur = db.Column(db.Float, nullable=True)
@@ -287,7 +287,7 @@ class GesundheitFoto(db.Model):
 class Impfung(db.Model):
     __tablename__ = 'impfungen'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     datum = db.Column(db.Date, nullable=False)
     name = db.Column(db.String(100), nullable=False)
     arzt = db.Column(db.String(100), nullable=True)
@@ -300,7 +300,7 @@ class Impfung(db.Model):
 class Medikament(db.Model):
     __tablename__ = 'medikamente'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     name = db.Column(db.String(100), nullable=False)
     dosis = db.Column(db.String(50), nullable=True)
     einheit = db.Column(db.String(20), nullable=True)  # ml/mg/tropfen
@@ -314,7 +314,7 @@ class Medikament(db.Model):
 class Arztbesuch(db.Model):
     __tablename__ = 'arztbesuche'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     datum = db.Column(db.DateTime, nullable=False)
     arzt = db.Column(db.String(100), nullable=True)
     grund = db.Column(db.String(200), nullable=False)
@@ -332,7 +332,7 @@ class Arztbesuch(db.Model):
 class Zahn(db.Model):
     __tablename__ = 'zahneintraege'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     zahn_nr = db.Column(db.Integer, nullable=False)  # 1-20 Milchzähne
     name = db.Column(db.String(50), nullable=False)
     position = db.Column(db.String(20), nullable=False)  # oben-links/oben-rechts/unten-links/unten-rechts
@@ -357,7 +357,7 @@ class MeilensteinKategorie(str, enum.Enum):
 class Meilenstein(db.Model):
     __tablename__ = 'meilensteine'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     kategorie = db.Column(db.String(30), nullable=False)
     titel = db.Column(db.String(200), nullable=False)
     beschreibung = db.Column(db.Text, nullable=True)
@@ -386,7 +386,7 @@ class AktivitaetTyp(db.Model):
 class Aktivitaet(db.Model):
     __tablename__ = 'aktivitaeten'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     typ_id = db.Column(db.Integer, db.ForeignKey('aktivitaet_typen.id'), nullable=False)
     beginn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     ende = db.Column(db.DateTime, nullable=True)
@@ -405,7 +405,7 @@ class Aktivitaet(db.Model):
 class Tagebuch(db.Model):
     __tablename__ = 'tagebucheintraege'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     datum = db.Column(db.Date, nullable=False, default=date.today)
     titel = db.Column(db.String(200), nullable=True)
     text = db.Column(db.Text, nullable=True)
@@ -435,7 +435,7 @@ class TagebuchFoto(db.Model):
 class Routine(db.Model):
     __tablename__ = 'routinen'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     name = db.Column(db.String(100), nullable=False)
     beschreibung = db.Column(db.Text, nullable=True)
     uhrzeit = db.Column(db.String(5), nullable=True)  # HH:MM
@@ -464,7 +464,7 @@ class RoutineCheck(db.Model):
 class Beikost(db.Model):
     __tablename__ = 'beikosteintraege'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     datum = db.Column(db.Date, nullable=False, default=date.today)
     lebensmittel = db.Column(db.String(100), nullable=False)
     kategorie = db.Column(db.String(50), nullable=True)  # obst/gemuese/getreide/protein/milch
@@ -516,7 +516,7 @@ class Notfallinfo(db.Model):
 class Milchvorrat(db.Model):
     __tablename__ = 'milchvorrat'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     datum = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     menge_ml = db.Column(db.Float, nullable=False)
     typ = db.Column(db.String(20), nullable=False, default='eingelagert')  # eingelagert/verbraucht/entsorgt
@@ -535,7 +535,7 @@ class Milchvorrat(db.Model):
 class Erinnerung(db.Model):
     __tablename__ = 'erinnerungen'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     titel = db.Column(db.String(200), nullable=False)
     beschreibung = db.Column(db.Text, nullable=True)
     faellig_am = db.Column(db.DateTime, nullable=False)
@@ -553,7 +553,7 @@ class MuKiUntersuchung(db.Model):
     """Österreichische Mutter-Kind-Pass Untersuchungen."""
     __tablename__ = 'muki_untersuchungen'
     id = db.Column(db.Integer, primary_key=True)
-    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False)
+    kind_id = db.Column(db.Integer, db.ForeignKey('kinder.id'), nullable=False, index=True)
     name = db.Column(db.String(50), nullable=False)  # U1, U2, ... U9
     bezeichnung = db.Column(db.String(200), nullable=False)
     alter_von_wochen = db.Column(db.Integer, nullable=True)

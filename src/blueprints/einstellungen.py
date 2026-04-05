@@ -53,6 +53,7 @@ def api_kind_create():
         name=data['name'],
         geburtsdatum=date.fromisoformat(data['geburtsdatum']),
         geschlecht=data.get('geschlecht'),
+        land=data.get('land', 'AT'),
         fruehgeburt_wochen=data.get('fruehgeburt_wochen'),
         blutgruppe=data.get('blutgruppe'),
     )

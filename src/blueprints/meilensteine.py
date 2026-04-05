@@ -62,6 +62,9 @@ def index():
 @meilensteine_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     eintraege = Meilenstein.query.filter_by(kind_id=kind_id).order_by(Meilenstein.kategorie, Meilenstein.alter_monate).all()
     return jsonify([{
         'id': e.id, 'kategorie': e.kategorie, 'titel': e.titel,
@@ -97,7 +100,7 @@ def api_toggle(id):
     zugriff = check_kind_zugriff(e.kind_id)
     if zugriff:
         return zugriff
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     e.erreicht = not e.erreicht
     if e.erreicht and not e.datum:
         e.datum = date.today()

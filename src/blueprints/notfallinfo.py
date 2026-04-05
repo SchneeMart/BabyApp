@@ -17,6 +17,9 @@ def index():
 @notfallinfo_bp.route('/api/get/<int:kind_id>')
 @login_required
 def api_get(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     kind = db.session.get(Kind, kind_id)
     if not kind:
         return jsonify({'error': 'Kind nicht gefunden'}), 404

@@ -25,9 +25,11 @@ def get_active_kind():
     """Gibt das aktuell ausgewählte Kind zurück."""
     kind_id = request.cookies.get('active_kind_id')
     if kind_id:
-        return db.session.get(Kind, int(kind_id))
-    kind = Kind.query.first()
-    return kind
+        try:
+            return db.session.get(Kind, int(kind_id))
+        except (ValueError, TypeError):
+            pass
+    return Kind.query.first()
 
 
 @main_bp.route('/share/<token>')

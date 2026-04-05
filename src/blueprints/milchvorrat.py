@@ -17,6 +17,9 @@ def index():
 @milchvorrat_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     eintraege = Milchvorrat.query.filter_by(kind_id=kind_id).order_by(Milchvorrat.datum.desc()).limit(100).all()
     return jsonify([{
         'id': e.id, 'datum': e.datum.isoformat() + 'Z', 'menge_ml': e.menge_ml,
@@ -30,6 +33,9 @@ def api_list(kind_id):
 @login_required
 def api_bestand(kind_id):
     """Aktueller Milchvorrat-Bestand."""
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     alle = Milchvorrat.query.filter_by(kind_id=kind_id).all()
     eingelagert = sum(e.menge_ml for e in alle if e.typ == 'eingelagert')
     verbraucht = sum(e.menge_ml for e in alle if e.typ == 'verbraucht')
@@ -46,6 +52,8 @@ def api_bestand(kind_id):
     tiefkuehl = sum(e.menge_ml for e in alle if e.typ == 'eingelagert' and e.lagerort == 'tiefkuehl')
     kuehl_verbraucht = sum(e.menge_ml for e in alle if e.typ == 'verbraucht' and e.lagerort == 'kuehlschrank')
     tiefkuehl_verbraucht = sum(e.menge_ml for e in alle if e.typ == 'verbraucht' and e.lagerort == 'tiefkuehl')
+    kuehl_entsorgt = sum(e.menge_ml for e in alle if e.typ == 'entsorgt' and e.lagerort == 'kuehlschrank')
+    tiefkuehl_entsorgt = sum(e.menge_ml for e in alle if e.typ == 'entsorgt' and e.lagerort == 'tiefkuehl')
 
     return jsonify({
         'bestand_ml': max(0, bestand),
@@ -53,8 +61,8 @@ def api_bestand(kind_id):
         'verbraucht_ml': verbraucht,
         'entsorgt_ml': entsorgt,
         'verfallen_ml': verfallen,
-        'kuehlschrank_ml': max(0, kuehl - kuehl_verbraucht),
-        'tiefkuehl_ml': max(0, tiefkuehl - tiefkuehl_verbraucht),
+        'kuehlschrank_ml': max(0, kuehl - kuehl_verbraucht - kuehl_entsorgt),
+        'tiefkuehl_ml': max(0, tiefkuehl - tiefkuehl_verbraucht - tiefkuehl_entsorgt),
     })
 
 

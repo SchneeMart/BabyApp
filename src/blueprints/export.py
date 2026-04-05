@@ -80,7 +80,9 @@ def csv_export(kind_id, modul):
         return 'Unbekanntes Modul', 400
 
     output.seek(0)
-    dateiname = f'{kind.name}_{modul}_{date.today().strftime("%Y%m%d")}.csv'
+    from werkzeug.utils import secure_filename
+    safe_name = secure_filename(kind.name) or 'kind'
+    dateiname = f'{safe_name}_{modul}_{date.today().strftime("%Y%m%d")}.csv'
     return Response(
         '\ufeff' + output.getvalue(),  # BOM für Excel
         mimetype='text/csv; charset=utf-8',

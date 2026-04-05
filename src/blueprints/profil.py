@@ -16,6 +16,19 @@ def index():
 @login_required
 def api_me():
     """Gibt die eigenen Profildaten zurück."""
+    if hasattr(current_user, 'kind_id') and isinstance(current_user.id, str) and current_user.id.startswith('token_'):
+        return jsonify({
+            'id': current_user.id,
+            'username': 'Gast',
+            'email': None,
+            'rolle': 'gast',
+            'rolle_label': 'Gast',
+            'kann_schreiben': current_user.kann_schreiben,
+            'kann_kind_erstellen': False,
+            'is_admin': False,
+            'last_login': None,
+            'created_at': None,
+        })
     return jsonify({
         'id': current_user.id,
         'username': current_user.username,

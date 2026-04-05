@@ -17,6 +17,9 @@ def index():
 @fuetterung_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     datum_str = request.args.get('datum', date.today().isoformat())
     try:
         datum = date.fromisoformat(datum_str)
@@ -66,6 +69,8 @@ def api_create():
             return jsonify({'error': 'Es läuft bereits eine Fütterung'}), 400
         if Schlaf.query.filter(Schlaf.kind_id == kind_id, Schlaf.ende.is_(None)).first():
             return jsonify({'error': 'Es läuft bereits ein Schlaf-Timer. Bitte zuerst beenden.'}), 400
+        if Aktivitaet.query.filter(Aktivitaet.kind_id == kind_id, Aktivitaet.ende.is_(None)).first():
+            return jsonify({'error': 'Es läuft bereits eine Aktivität. Bitte zuerst beenden.'}), 400
 
     eintrag = Fuetterung(
         kind_id=kind_id,
@@ -120,7 +125,7 @@ def api_stop(id):
     if zugriff:
         return zugriff
     eintrag.ende = datetime.utcnow()
-    eintrag.dauer_minuten = int((eintrag.ende - eintrag.beginn).total_seconds() / 60)
+    eintrag.dauer_minuten = max(1, round((eintrag.ende - eintrag.beginn).total_seconds() / 60))
     db.session.commit()
     return jsonify({'ok': True, 'dauer_minuten': eintrag.dauer_minuten})
 

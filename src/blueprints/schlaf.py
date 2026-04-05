@@ -17,6 +17,9 @@ def index():
 @schlaf_bp.route('/api/list/<int:kind_id>')
 @login_required
 def api_list(kind_id):
+    zugriff = check_kind_zugriff(kind_id)
+    if zugriff:
+        return zugriff
     datum_str = request.args.get('datum', date.today().isoformat())
     try:
         datum = date.fromisoformat(datum_str)
@@ -85,8 +88,8 @@ def api_stop(id):
     if zugriff:
         return zugriff
     eintrag.ende = datetime.utcnow()
-    eintrag.dauer_minuten = int((eintrag.ende - eintrag.beginn).total_seconds() / 60)
-    data = request.get_json() or {}
+    eintrag.dauer_minuten = max(1, round((eintrag.ende - eintrag.beginn).total_seconds() / 60))
+    data = request.get_json(silent=True) or {}
     if 'qualitaet' in data:
         eintrag.qualitaet = data['qualitaet']
     if 'notiz' in data:
